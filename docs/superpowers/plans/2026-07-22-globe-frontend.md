@@ -741,6 +741,16 @@ git commit -m "feat: render textured globe with altitude-driven polygon bands"
 
 ### Task 6: Hover and click interactions (`geo.ts`, `interactions.ts`) — TDD for geometry
 
+> **Executed note:** browser automation's synthetic click does not fire
+> `onPolygonClick`. three-render-objects detects clicks on `pointerup` and only
+> when a matching `pointerdown` set `isPointerPressed`, which the harness's
+> click does not produce — an automation artifact, not an app bug. Verified
+> instead by dispatching a real `pointermove`/`pointerdown`/`pointerup`
+> sequence: the camera flew to the clicked country's centroid at
+> `FLY_ALTITUDE` (0.5) and the band switched to detail (210 polygons, 34
+> provinces). Hover highlight and name tooltips were confirmed visually.
+
+
 **Files:**
 - Create: `frontend/src/geo.ts`
 - Test: `frontend/src/geo.test.ts`
@@ -751,7 +761,7 @@ git commit -m "feat: render textured globe with altitude-driven polygon bands"
 - Consumes: `featureName` (Task 4); `GlobeInstance` created by Task 5's `createGlobe`.
 - Produces: `geometryCentroid(geometry: Geometry): { lat: number; lng: number }` (bbox center); `attachInteractions(globe: GlobeInstance): void`; `FLY_ALTITUDE = 0.5`.
 
-- [ ] **Step 1: Write the failing tests for the centroid helper**
+- [x] **Step 1: Write the failing tests for the centroid helper**
 
 Create `frontend/src/geo.test.ts`:
 
@@ -782,7 +792,7 @@ describe('geometryCentroid', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -791,7 +801,7 @@ pnpm test
 
 Expected: FAIL — `Cannot find module './geo'`.
 
-- [ ] **Step 3: Implement `geo.ts`**
+- [x] **Step 3: Implement `geo.ts`**
 
 Create `frontend/src/geo.ts`:
 
@@ -820,7 +830,7 @@ export function geometryCentroid(geometry: Geometry): { lat: number; lng: number
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm test
@@ -828,7 +838,7 @@ pnpm test
 
 Expected: PASS — 16 tests.
 
-- [ ] **Step 5: Implement `interactions.ts`**
+- [x] **Step 5: Implement `interactions.ts`**
 
 Create `frontend/src/interactions.ts`:
 
@@ -865,7 +875,7 @@ export function attachInteractions(globe: GlobeInstance): void {
 }
 ```
 
-- [ ] **Step 6: Attach interactions in `main.ts`**
+- [x] **Step 6: Attach interactions in `main.ts`**
 
 In `frontend/src/main.ts`, add the import:
 
@@ -879,7 +889,7 @@ and immediately after `const globe = createGlobe(app);` add:
 attachInteractions(globe);
 ```
 
-- [ ] **Step 7: Verify types, tests, and build**
+- [x] **Step 7: Verify types, tests, and build**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -887,7 +897,7 @@ pnpm test    # Expected: PASS (16 tests)
 pnpm build   # Expected: succeeds
 ```
 
-- [ ] **Step 8: Verify manually in the dev server**
+- [x] **Step 8: Verify manually in the dev server**
 
 Run `pnpm dev`, open http://localhost:5173, and check:
 
@@ -898,7 +908,7 @@ Run `pnpm dev`, open http://localhost:5173, and check:
 
 Stop the server.
 
-- [ ] **Step 9: Commit (task done)**
+- [x] **Step 9: Commit (task done)**
 
 Mark all Task 6 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 

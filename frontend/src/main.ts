@@ -4,6 +4,7 @@ import { createGlobe } from './globe';
 import { nextBand, type ZoomBand } from './zoomLevels';
 import { buildPolygons } from './layers';
 import { loadCountries, loadProvinces } from './data';
+import { attachInteractions } from './interactions';
 
 function webglSupported(): boolean {
   try {
@@ -28,6 +29,7 @@ if (!webglSupported()) {
   app.innerHTML = '<p class="fallback">This app requires WebGL, which your browser does not support.</p>';
 } else {
   const globe = createGlobe(app);
+  attachInteractions(globe);
 
   if (import.meta.env.DEV) {
     (window as unknown as { __globe: unknown }).__globe = globe;
