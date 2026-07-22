@@ -317,7 +317,7 @@ git commit -m "feat: add globe textures and countries/Vietnam-provinces GeoJSON 
 - Consumes: nothing.
 - Produces: `type ZoomBand = 'globe' | 'countries' | 'detail'` and `nextBand(current: ZoomBand, altitude: number): ZoomBand`. Exported threshold constants `COUNTRIES_ENTER = 1.8`, `COUNTRIES_EXIT = 2.0`, `DETAIL_ENTER = 0.6`, `DETAIL_EXIT = 0.75`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `frontend/src/zoomLevels.test.ts`:
 
@@ -361,7 +361,7 @@ describe('nextBand', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -370,7 +370,7 @@ pnpm test
 
 Expected: FAIL — `Cannot find module './zoomLevels'` (or equivalent resolution error).
 
-- [ ] **Step 3: Implement `zoomLevels.ts`**
+- [x] **Step 3: Implement `zoomLevels.ts`**
 
 Create `frontend/src/zoomLevels.ts`:
 
@@ -402,7 +402,7 @@ export function nextBand(current: ZoomBand, altitude: number): ZoomBand {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm test
@@ -410,7 +410,7 @@ pnpm test
 
 Expected: PASS — 6 tests passing.
 
-- [ ] **Step 5: Commit (task done)**
+- [x] **Step 5: Commit (task done)**
 
 Mark all Task 3 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
