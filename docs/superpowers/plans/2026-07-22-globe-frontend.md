@@ -432,7 +432,7 @@ git commit -m "feat: add zoom band classification with hysteresis"
 - Consumes: `ZoomBand` from `./zoomLevels` (Task 3).
 - Produces: `VIETNAM_ISO_A3 = 'VNM'`; `featureName(f: Feature): string`; `buildPolygons(band: ZoomBand, countries: FeatureCollection | null, provinces: FeatureCollection | null): Feature[]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `frontend/src/layers.test.ts`:
 
@@ -501,7 +501,7 @@ describe('featureName', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -510,7 +510,7 @@ pnpm test
 
 Expected: FAIL — `Cannot find module './layers'`.
 
-- [ ] **Step 3: Implement `layers.ts`**
+- [x] **Step 3: Implement `layers.ts`**
 
 Create `frontend/src/layers.ts`:
 
@@ -539,7 +539,7 @@ export function buildPolygons(
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm test
@@ -547,7 +547,7 @@ pnpm test
 
 Expected: PASS — all zoomLevels + layers tests passing (14 total).
 
-- [ ] **Step 5: Commit (task done)**
+- [x] **Step 5: Commit (task done)**
 
 Mark all Task 4 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
