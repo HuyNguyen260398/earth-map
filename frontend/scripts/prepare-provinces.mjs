@@ -25,6 +25,32 @@ const CORRECTIONS = [
   },
 ];
 
+// three-globe triangulates polygon caps assuming the winding used by the
+// Natural Earth countries file it ships with: outer rings clockwise, holes
+// counter-clockwise. This source is shapefile-derived with the opposite
+// winding, which inverts every cap into screen-covering triangle fans, so
+// normalize it here.
+function signedArea(ring) {
+  let area = 0;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    area += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+  }
+  return area / 2;
+}
+
+function rewind(geometry) {
+  const fix = (poly) =>
+    poly.map((ring, i) => {
+      const wantClockwise = i === 0; // outer ring clockwise, holes the other way
+      const isClockwise = signedArea(ring) < 0;
+      return isClockwise === wantClockwise ? ring : [...ring].reverse();
+    });
+
+  return geometry.type === 'MultiPolygon'
+    ? { ...geometry, coordinates: geometry.coordinates.map(fix) }
+    : { ...geometry, coordinates: fix(geometry.coordinates) };
+}
+
 function centroidLat(geometry) {
   let min = Infinity;
   let max = -Infinity;
@@ -62,7 +88,11 @@ const features = fc.features.map((f) => {
     }
   }
 
-  return { type: 'Feature', geometry: f.geometry, properties: { name, level: 'province' } };
+  return {
+    type: 'Feature',
+    geometry: rewind(f.geometry),
+    properties: { name, level: 'province' },
+  };
 });
 
 // Validate: exactly 34, unique, and exactly the official set.

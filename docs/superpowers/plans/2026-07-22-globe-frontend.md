@@ -561,6 +561,25 @@ git commit -m "feat: add zoom-band polygon dataset selection"
 
 ### Task 5: Globe rendering and zoom-band wiring (`globe.ts`, `data.ts`, `main.ts`)
 
+> **Executed notes:**
+> - Verification found the globe rendering as a flat blue sheet at the detail
+>   band. Root cause was **not** the app code: the province GeoJSON had
+>   counter-clockwise outer rings, while three-globe triangulates caps assuming
+>   the clockwise winding of its Natural Earth countries data. Every province
+>   cap inverted into screen-covering triangle fans. Fixed in
+>   `scripts/prepare-provinces.mjs` (`rewind`), and the data was regenerated —
+>   see `frontend/public/data/README.md`.
+> - The provinces were also re-simplified from 8% to **1%** (~126 points per
+>   feature, ~75 KB), matching Natural Earth's density; at 8% the 846-point
+>   features made cap tessellation pathologically slow.
+> - `main.ts` additionally exposes the globe as `window.__globe` under
+>   `import.meta.env.DEV` only. This was what made the winding bug diagnosable
+>   (reading real camera altitude and swapping datasets live); it is stripped
+>   from production builds.
+> - globe.gl already clamps `controls.minDistance` to just above the surface, so
+>   no custom zoom floor is needed.
+
+
 **Files:**
 - Create: `frontend/src/globe.ts`
 - Create: `frontend/src/data.ts`
@@ -570,7 +589,7 @@ git commit -m "feat: add zoom-band polygon dataset selection"
 - Consumes: `nextBand`, `ZoomBand` (Task 3); `buildPolygons` (Task 4); assets from Task 2.
 - Produces: `createGlobe(container: HTMLElement): GlobeInstance` (base styling only — no hover/click; Task 6 layers interactions on top); `loadCountries(): Promise<FeatureCollection>`; `loadProvinces(): Promise<FeatureCollection>`. `main.ts` owns band state and the `refreshPolygons()` loop.
 
-- [ ] **Step 1: Implement `globe.ts`**
+- [x] **Step 1: Implement `globe.ts`**
 
 Create `frontend/src/globe.ts`:
 
@@ -593,7 +612,7 @@ export function createGlobe(container: HTMLElement): GlobeInstance {
 
 Note: globe.gl ≥ 2.32 supports `new Globe(element)`. If TypeScript rejects the constructor call, use the factory form `Globe()(container)` — same instance either way.
 
-- [ ] **Step 2: Implement `data.ts`**
+- [x] **Step 2: Implement `data.ts`**
 
 Create `frontend/src/data.ts`:
 
@@ -628,7 +647,7 @@ export function loadProvinces(): Promise<FeatureCollection> {
 }
 ```
 
-- [ ] **Step 3: Wire it together in `main.ts`**
+- [x] **Step 3: Wire it together in `main.ts`**
 
 Replace `frontend/src/main.ts` entirely with:
 
@@ -688,7 +707,7 @@ if (!webglSupported()) {
 }
 ```
 
-- [ ] **Step 4: Verify types, tests, and build**
+- [x] **Step 4: Verify types, tests, and build**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -696,7 +715,7 @@ pnpm test    # Expected: PASS (14 tests, unchanged)
 pnpm build   # Expected: tsc + vite build succeed
 ```
 
-- [ ] **Step 5: Verify manually in the dev server**
+- [x] **Step 5: Verify manually in the dev server**
 
 Run `pnpm dev`, open http://localhost:5173, and check:
 
@@ -708,7 +727,7 @@ Run `pnpm dev`, open http://localhost:5173, and check:
 
 Stop the server.
 
-- [ ] **Step 6: Commit (task done)**
+- [x] **Step 6: Commit (task done)**
 
 Mark all Task 5 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 

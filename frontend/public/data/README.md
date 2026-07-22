@@ -21,15 +21,29 @@
 
 Regenerate with:
 
-    npx mapshaper <source>/Provinces.geojson -simplify 8% keep-shapes \
-      -o precision=0.0001 format=geojson public/data/provinces-raw.geojson
+    npx mapshaper <source>/Provinces.geojson -simplify 1% keep-shapes \
+      -o precision=0.001 format=geojson public/data/provinces-raw.geojson
     node scripts/prepare-provinces.mjs \
       public/data/provinces-raw.geojson public/data/vietnam-34-provinces.geojson TinhThanh
 
 `prepare-provinces.mjs` normalizes each feature's properties to
 `{ name, level: 'province' }` (source name key: `TinhThanh`), applies the
-correction below, and fails if the result is not exactly the 34 official units
-with unique names.
+correction and rewind below, and fails if the result is not exactly the 34
+official units with unique names.
+
+The 16 MB source simplifies to ~75 KB (34 features, ~126 points each) — roughly
+the vertex density of the Natural Earth countries file, which is what the
+globe's polygon layer is built for.
+
+### Ring winding
+
+three-globe triangulates polygon caps assuming the winding of the Natural Earth
+countries data it ships with: **outer rings clockwise**, holes counter-clockwise.
+This source is shapefile-derived and uses the opposite winding, which inverts
+every cap into screen-covering triangle fans that wash the whole globe flat
+blue. `prepare-provinces.mjs` rewinds every ring to match. If you re-derive this
+file by other means, preserve that winding or the globe will render as a blue
+sheet.
 
 ### Upstream correction applied
 
