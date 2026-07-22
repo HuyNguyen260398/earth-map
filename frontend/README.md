@@ -1,30 +1,47 @@
 # Earth Map — Frontend
 
-Interactive 3D earth globe (Three.js via [globe.gl](https://github.com/vasturiano/globe.gl)).
-Camera altitude drives three levels of detail:
+Interactive 3D earth globe (Three.js via [globe.gl](https://github.com/vasturiano/globe.gl)),
+navigated by clicking rather than by hunting for a zoom level:
 
-1. **Globe** (altitude > 1.8) — textured earth, no borders.
-2. **Countries** (≤ 1.8) — world country borders (Natural Earth 110m).
-3. **Detail** (≤ 0.6) — Vietnam's 34 post-merger provinces/cities (2025
-   administrative reform); other countries keep their national borders.
+| You are looking at | Click the earth | Click a shape | Click empty space |
+|---|---|---|---|
+| **Globe** — textured earth, no borders | dive to the country map, centred where you clicked | — | — |
+| **Countries** — world borders (Natural Earth 110m) | nothing (that's ocean) | focus that country | back to the globe |
+| **Detail** — one country's subdivisions | back to the country map | nothing | back to the country map |
 
-Band thresholds use hysteresis (separate enter/exit altitudes) so the view does
-not flicker at a boundary. Hovering a country or province highlights it and
-shows its name; clicking a country flies the camera to it, which lands in the
-detail band.
+Scrolling still works and stays in sync: zooming out steps back down the ladder
+(with hysteresis, so the view doesn't flicker at a boundary), while zooming in
+never jumps into the detail view on its own — that always needs a country pick.
+
+Borders are drawn faint enough to read as part of the globe; **hover** is what
+picks a shape out, highlighting it and showing its name. In the detail view the
+focused country's neighbours are dropped entirely, so only its subdivisions are
+drawn. Vietnam is the one country with subdivision data (its 34 post-merger
+provinces/cities from the 2025 administrative reform); every other country
+shows its national outline alone.
+
+## Terrain
+
+The globe starts on a 4k NASA Blue Marble texture and swaps in an 8k copy once
+you leave the far view — the higher resolution only pays off close up, and it's
+~4.7 MB. Textures get the renderer's maximum anisotropic filtering (without it
+the surface smears into mip blur wherever the globe curves away), the sphere is
+tessellated finely enough that the horizon has no visible facets, and a GEBCO
+elevation bump map provides relief shading. See
+[`public/textures/README.md`](public/textures/README.md).
 
 ## Develop
 
     pnpm install
     pnpm dev        # http://localhost:5173
 
-In dev builds only, the globe instance is exposed as `window.__globe` for
-debugging (reading `pointOfView()`, swapping `polygonsData()`); it is stripped
+In dev builds only, `window.__globe` (the globe.gl instance) and `window.__nav()`
+(current band + selected country) are exposed for debugging; both are stripped
 from production builds.
 
 ## Test & build
 
-    pnpm test       # Vitest unit tests (zoom bands, layer selection, geometry)
+    pnpm test       # Vitest unit tests
     pnpm build      # production build in dist/
     pnpm preview    # serve the production build
 
@@ -32,12 +49,14 @@ from production builds.
 
 | File | Responsibility |
 |---|---|
-| `src/main.ts` | Bootstrap, band state, polygon refresh, WebGL fallback |
-| `src/globe.ts` | globe.gl instance configuration (textures, polygon styling) |
-| `src/zoomLevels.ts` | Pure altitude → band classification with hysteresis |
-| `src/layers.ts` | Band → polygon dataset (swaps Vietnam for its provinces) |
-| `src/interactions.ts` | Hover highlight, name tooltips, click-to-fly |
-| `src/geo.ts` | Bounding-box centroid for fly-to targets |
+| `src/main.ts` | Bootstrap, state wiring, camera moves, polygon refresh, WebGL fallback |
+| `src/navigation.ts` | Pure state machine: click/zoom events → band + selected country |
+| `src/zoomLevels.ts` | Altitude thresholds and zoom-driven band changes |
+| `src/layers.ts` | Band + selection → polygon dataset; hit-testing a click |
+| `src/styles.ts` | Polygon fill/border colours per band and hover state |
+| `src/globe.ts` | globe.gl setup: textures, texture quality, tessellation |
+| `src/interactions.ts` | Pointer handling: hover, click vs. drag, on/off the globe |
+| `src/geo.ts` | Bounds, centroid, point-in-polygon, fly-to altitude |
 | `src/data.ts` | Lazy, cached GeoJSON loading |
 
 ## Data

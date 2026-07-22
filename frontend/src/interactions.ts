@@ -1,33 +1,42 @@
 import type { GlobeInstance } from 'globe.gl';
 import type { Feature } from 'geojson';
 import { featureName } from './layers';
-import { geometryCentroid } from './geo';
 
-export const FLY_ALTITUDE = 0.5; // inside the detail band (enter ≤ 0.6)
-const FLY_MS = 1200;
+export interface InteractionHandlers {
+  onHover(feature: Feature | null): void;
+  onSurfaceClick(coords: { lat: number; lng: number }): void;
+  onOutsideClick(): void;
+}
 
-const BASE_FILL = 'rgba(60, 120, 220, 0.25)';
-const HOVER_FILL = 'rgba(255, 200, 0, 0.55)';
+// A pointer that travels further than this between press and release was
+// dragging the camera, not clicking.
+const DRAG_SLOP_PX = 5;
 
-export function attachInteractions(globe: GlobeInstance): void {
-  let hovered: object | null = null;
+export function attachInteractions(globe: GlobeInstance, handlers: InteractionHandlers): void {
+  // three ships no types of its own, so globe.gl's renderer() widens to any.
+  const canvas = globe.renderer().domElement as HTMLCanvasElement;
+  let pressedAt: { x: number; y: number } | null = null;
 
-  globe
-    .polygonLabel((f) => `<b>${featureName(f as Feature)}</b>`)
-    .polygonCapColor((d) => (d === hovered ? HOVER_FILL : BASE_FILL))
-    .polygonStrokeColor((d) => (d === hovered ? '#ffd700' : '#ffffff'))
-    .onPolygonHover((f) => {
-      hovered = f;
-      // Re-assign the accessors so globe.gl re-evaluates colors for the new
-      // hover state; the closures above read the updated `hovered`.
-      globe
-        .polygonCapColor((d) => (d === hovered ? HOVER_FILL : BASE_FILL))
-        .polygonStrokeColor((d) => (d === hovered ? '#ffd700' : '#ffffff'));
-    })
-    .onPolygonClick((f) => {
-      const feature = f as Feature;
-      if (!feature.geometry) return;
-      const { lat, lng } = geometryCentroid(feature.geometry);
-      globe.pointOfView({ lat, lng, altitude: FLY_ALTITUDE }, FLY_MS);
-    });
+  globe.polygonLabel((f) => `<b>${featureName(f as Feature)}</b>`).onPolygonHover((f) => {
+    const hovered = (f as Feature | null) ?? null;
+    canvas.style.cursor = hovered ? 'pointer' : 'default';
+    handlers.onHover(hovered);
+  });
+
+  canvas.addEventListener('pointerdown', (e) => {
+    pressedAt = e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    const start = pressedAt;
+    pressedAt = null;
+    if (!start || e.button !== 0) return;
+    if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > DRAG_SLOP_PX) return;
+
+    // globe.gl drops clicks that hit nothing, but a click on empty space is
+    // exactly the "zoom back out" gesture — so read the ray ourselves.
+    const rect = canvas.getBoundingClientRect();
+    const coords = globe.toGlobeCoords(e.clientX - rect.left, e.clientY - rect.top);
+    coords ? handlers.onSurfaceClick(coords) : handlers.onOutsideClick();
+  });
 }

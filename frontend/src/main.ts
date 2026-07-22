@@ -1,10 +1,20 @@
 import './style.css';
-import type { FeatureCollection } from 'geojson';
-import { createGlobe } from './globe';
-import { nextBand, type ZoomBand } from './zoomLevels';
-import { buildPolygons } from './layers';
-import { loadCountries, loadProvinces } from './data';
+import type { Feature, FeatureCollection } from 'geojson';
+import { createGlobe, upgradeTerrainTexture } from './globe';
 import { attachInteractions } from './interactions';
+import { buildPolygons, featureAt, isVietnam } from './layers';
+import { INITIAL_NAV_STATE, navigate, type NavEvent, type NavState } from './navigation';
+import { boundsAltitude, geometryBounds, geometryCentroid } from './geo';
+import { polygonCapColor, polygonStrokeColor } from './styles';
+import {
+  COUNTRIES_VIEW_ALTITUDE,
+  DETAIL_VIEW_MAX_ALTITUDE,
+  DETAIL_VIEW_MIN_ALTITUDE,
+  GLOBE_VIEW_ALTITUDE,
+} from './zoomLevels';
+import { loadCountries, loadProvinces } from './data';
+
+const FLY_MS = 1000;
 
 function webglSupported(): boolean {
   try {
@@ -29,31 +39,89 @@ if (!webglSupported()) {
   app.innerHTML = '<p class="fallback">This app requires WebGL, which your browser does not support.</p>';
 } else {
   const globe = createGlobe(app);
-  attachInteractions(globe);
 
-  if (import.meta.env.DEV) {
-    (window as unknown as { __globe: unknown }).__globe = globe;
-  }
-
-  let band: ZoomBand = 'globe';
+  let nav: NavState = INITIAL_NAV_STATE;
+  let hovered: Feature | null = null;
   let countries: FeatureCollection | null = null;
   let provinces: FeatureCollection | null = null;
+  // Camera flights pass through altitudes belonging to other bands; treating
+  // those as user zooming would yank the band back mid-flight.
+  let flyingUntil = 0;
 
-  const refreshPolygons = async (): Promise<void> => {
+  function applyStyles(): void {
+    const ctx = { band: nav.band, hovered };
+    globe
+      .polygonCapColor((d) => polygonCapColor(d as Feature, ctx))
+      .polygonStrokeColor((d) => polygonStrokeColor(d as Feature, ctx));
+  }
+
+  async function renderPolygons(): Promise<void> {
     try {
-      if (band !== 'globe' && !countries) countries = await loadCountries();
-      if (band === 'detail' && !provinces) provinces = await loadProvinces();
+      if (nav.band !== 'globe' && !countries) countries = await loadCountries();
+      if (nav.band === 'detail' && isVietnam(nav.selected) && !provinces) provinces = await loadProvinces();
     } catch (err) {
-      showToast('Failed to load map data — zoom again to retry.');
+      showToast('Failed to load map data — click again to retry.');
       console.error(err);
     }
-    globe.polygonsData(buildPolygons(band, countries, provinces));
-  };
+    applyStyles();
+    globe.polygonsData(buildPolygons(nav.band, countries, provinces, nav.selected));
+  }
+
+  function flyTo(pov: { lat?: number; lng?: number; altitude: number }): void {
+    flyingUntil = performance.now() + FLY_MS + 100;
+    globe.pointOfView(pov, FLY_MS);
+  }
+
+  function moveCamera(state: NavState, event: NavEvent): void {
+    if (state.band === 'globe') {
+      flyTo({ altitude: GLOBE_VIEW_ALTITUDE });
+      return;
+    }
+    if (state.band === 'detail' && state.selected?.geometry) {
+      const { geometry } = state.selected;
+      flyTo({
+        ...geometryCentroid(geometry),
+        altitude: boundsAltitude(geometryBounds(geometry), DETAIL_VIEW_MIN_ALTITUDE, DETAIL_VIEW_MAX_ALTITUDE),
+      });
+      return;
+    }
+    // Diving in from the far view centres on wherever the earth was clicked;
+    // backing out of a country keeps the country centred.
+    flyTo(
+      event.type === 'globe-click'
+        ? { lat: event.lat, lng: event.lng, altitude: COUNTRIES_VIEW_ALTITUDE }
+        : { altitude: COUNTRIES_VIEW_ALTITUDE },
+    );
+  }
+
+  function dispatch(event: NavEvent): void {
+    const next = navigate(nav, event);
+    if (next === nav) return;
+    nav = next;
+    if (event.type !== 'zoom') moveCamera(nav, event);
+    if (nav.band !== 'globe') upgradeTerrainTexture(globe);
+    void renderPolygons();
+  }
+
+  attachInteractions(globe, {
+    onHover: (feature) => {
+      hovered = feature;
+      applyStyles();
+    },
+    onSurfaceClick: ({ lat, lng }) => {
+      const feature = featureAt(globe.polygonsData() as Feature[], lat, lng);
+      dispatch(feature ? { type: 'feature-click', feature } : { type: 'globe-click', lat, lng });
+    },
+    onOutsideClick: () => dispatch({ type: 'outside-click' }),
+  });
 
   globe.onZoom(({ altitude }) => {
-    const next = nextBand(band, altitude);
-    if (next === band) return;
-    band = next;
-    void refreshPolygons();
+    if (performance.now() < flyingUntil) return;
+    dispatch({ type: 'zoom', altitude });
   });
+
+  if (import.meta.env.DEV) {
+    (window as unknown as { __globe: unknown; __nav: unknown }).__globe = globe;
+    (window as unknown as { __nav: () => NavState }).__nav = () => nav;
+  }
 }
