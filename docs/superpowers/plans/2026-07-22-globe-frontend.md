@@ -160,7 +160,7 @@ git commit -m "feat: scaffold Vite + TypeScript frontend shell"
 - Consumes: nothing.
 - Produces: static asset paths used by later tasks — `/textures/earth-blue-marble.jpg`, `/textures/earth-topology.png`, `/textures/night-sky.png`, `/data/countries.geojson` (Natural Earth 110m; features carry `properties.ADMIN`, `properties.ISO_A3`), `/data/vietnam-34-provinces.geojson` (34 features; `properties = { name, level: 'province' }`).
 
-- [ ] **Step 1: Download globe textures**
+- [x] **Step 1: Download globe textures**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -171,7 +171,7 @@ curl -fL -o public/textures/night-sky.png        https://unpkg.com/three-globe/e
 ls -la public/textures   # Expected: three non-empty files
 ```
 
-- [ ] **Step 2: Download world countries GeoJSON (Natural Earth 110m)**
+- [x] **Step 2: Download world countries GeoJSON (Natural Earth 110m)**
 
 ```bash
 curl -fL -o public/data/countries.geojson \
@@ -197,7 +197,7 @@ console.log('features:', fc.features.length, '| vietnam:', vn && vn.properties.A
 
 Expected: `features: 177 | vietnam: Vietnam` (feature count may vary slightly by dataset version; `vietnam: Vietnam` must appear).
 
-- [ ] **Step 3: Clone the Vietnam provinces source and locate the file**
+- [x] **Step 3: Clone the Vietnam provinces source and locate the file**
 
 ```bash
 CLONE_DIR=$(mktemp -d)
@@ -206,14 +206,14 @@ SRC=$(find "$CLONE_DIR/Free-GIS-Data" -name "Provinces.geojson" -path "*Post-202
 echo "$SRC"   # Expected: a path inside the "Vietnam Administrative Divisions (Post-2025)..." directory
 ```
 
-- [ ] **Step 4: Simplify with mapshaper to a reasonable size**
+- [x] **Step 4: Simplify with mapshaper to a reasonable size**
 
 ```bash
 npx -y mapshaper "$SRC" -simplify 8% keep-shapes -o precision=0.0001 format=geojson public/data/provinces-raw.geojson
 ls -la public/data/provinces-raw.geojson   # Expected: well under 3 MB; if larger, re-run with -simplify 4%
 ```
 
-- [ ] **Step 5: Inspect the source property names**
+- [x] **Step 5: Inspect the source property names**
 
 ```bash
 node -e "
@@ -225,7 +225,16 @@ console.log('properties of first feature:', fc.features[0].properties);
 
 Expected: `features: 34` and a properties object containing the province name under some key (likely Vietnamese, e.g. `ten_tinh`, `TenTinh`, or `Name`). Note the exact key holding the Vietnamese province name — it is the `<NAME_KEY>` argument in the next step.
 
-- [ ] **Step 6: Write and run the normalization script**
+- [x] **Step 6: Write and run the normalization script**
+
+> **Executed note:** the source name key is `TinhThanh`, and the upstream file
+> has a data bug — it labels the Mekong Delta unit as a second "Lạng Sơn",
+> leaving `Đồng Tháp` missing. The delivered script therefore also applies a
+> latitude-keyed correction (a "Lạng Sơn" centred below 15°N is `Đồng Tháp`)
+> and validates the output against the official 34-unit name list, exiting
+> non-zero on duplicates, missing, or unexpected units. See
+> `frontend/public/data/README.md`. The skeleton below is the pre-correction
+> version; the committed script is the authority.
 
 Create `frontend/scripts/prepare-provinces.mjs`:
 
@@ -262,7 +271,7 @@ rm public/data/provinces-raw.geojson
 
 Expected: `Wrote 34 features to public/data/vietnam-34-provinces.geojson` followed by 34 Vietnamese province/city names (e.g. Hà Nội, Thành phố Hồ Chí Minh, Đà Nẵng, …).
 
-- [ ] **Step 7: Record provenance**
+- [x] **Step 7: Record provenance**
 
 Create `frontend/public/data/README.md`:
 
@@ -286,7 +295,7 @@ Create `frontend/public/data/README.md`:
   `{ name, level: 'province' }` by `frontend/scripts/prepare-provinces.mjs`.
 ```
 
-- [ ] **Step 8: Commit (task done)**
+- [x] **Step 8: Commit (task done)**
 
 Mark all Task 2 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
