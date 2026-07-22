@@ -21,6 +21,7 @@
 - Zoom band thresholds (camera altitude, globe-radius units; default view ≈ 2.5): countries enter ≤ 1.8, exit ≥ 2.0; detail enter ≤ 0.6, exit ≥ 0.75.
 - Keep `frontend/public/data/vietnam-34-provinces.geojson` under ~3 MB (simplify with mapshaper).
 - Working directory for all `pnpm` commands: `/Users/huyng/ws/earth-map/frontend` unless stated otherwise.
+- **Commit per task:** every task ends with exactly one commit. Before committing, mark all of that task's steps as done (`- [x]`) in this plan file and include the plan file in the commit, so each commit records both the change and the plan progress.
 
 ---
 
@@ -134,11 +135,13 @@ If `pnpm test` fails on "no test files", change the script to `"test": "vitest r
 
 Then run `pnpm dev`, open http://localhost:5173, and confirm a black page showing "Earth Map". Stop the server.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (task done)**
+
+Mark all Task 1 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend
+git add frontend docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "feat: scaffold Vite + TypeScript frontend shell"
 ```
 
@@ -283,11 +286,13 @@ Create `frontend/public/data/README.md`:
   `{ name, level: 'province' }` by `frontend/scripts/prepare-provinces.mjs`.
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Commit (task done)**
+
+Mark all Task 2 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend/public frontend/scripts
+git add frontend/public frontend/scripts docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "feat: add globe textures and countries/Vietnam-provinces GeoJSON assets"
 ```
 
@@ -396,11 +401,13 @@ pnpm test
 
 Expected: PASS — 6 tests passing.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (task done)**
+
+Mark all Task 3 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend/src/zoomLevels.ts frontend/src/zoomLevels.test.ts
+git add frontend/src/zoomLevels.ts frontend/src/zoomLevels.test.ts docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "feat: add zoom band classification with hysteresis"
 ```
 
@@ -531,11 +538,13 @@ pnpm test
 
 Expected: PASS — all zoomLevels + layers tests passing (14 total).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (task done)**
+
+Mark all Task 4 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend/src/layers.ts frontend/src/layers.test.ts
+git add frontend/src/layers.ts frontend/src/layers.test.ts docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "feat: add zoom-band polygon dataset selection"
 ```
 
@@ -690,11 +699,13 @@ Run `pnpm dev`, open http://localhost:5173, and check:
 
 Stop the server.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit (task done)**
+
+Mark all Task 5 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend/src
+git add frontend/src docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "feat: render textured globe with altitude-driven polygon bands"
 ```
 
@@ -859,11 +870,13 @@ Run `pnpm dev`, open http://localhost:5173, and check:
 
 Stop the server.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Commit (task done)**
+
+Mark all Task 6 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend/src
+git add frontend/src docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "feat: add hover highlight, name tooltips, and click-to-fly"
 ```
 
@@ -922,10 +935,12 @@ Static GeoJSON and texture assets live in `public/`; see
 `public/data/README.md` for sources, licenses, and processing steps.
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Commit (task done)**
+
+Mark all Task 7 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
 ```bash
 cd /Users/huyng/ws/earth-map
-git add frontend/README.md
+git add frontend/README.md docs/superpowers/plans/2026-07-22-globe-frontend.md
 git commit -m "docs: add frontend README"
 ```
