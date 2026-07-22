@@ -929,7 +929,7 @@ git commit -m "feat: add hover highlight, name tooltips, and click-to-fly"
 - Consumes: everything above.
 - Produces: a verified, documented phase-1 frontend; the starting point for the phase-2 (AWS) plan.
 
-- [ ] **Step 1: Run the full verification suite**
+- [x] **Step 1: Run the full verification suite**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -940,7 +940,7 @@ pnpm preview   # Serves the production build
 
 Open the preview URL and repeat the manual checks from Task 5 Step 5 and Task 6 Step 8 against the **production build** (this catches asset-path issues that `pnpm dev` hides). Stop the server.
 
-- [ ] **Step 2: Write `frontend/README.md`**
+- [x] **Step 2: Write `frontend/README.md`**
 
 ```markdown
 # Earth Map — Frontend
@@ -973,7 +973,7 @@ Static GeoJSON and texture assets live in `public/`; see
 `public/data/README.md` for sources, licenses, and processing steps.
 ```
 
-- [ ] **Step 3: Commit (task done)**
+- [x] **Step 3: Commit (task done)**
 
 Mark all Task 7 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
