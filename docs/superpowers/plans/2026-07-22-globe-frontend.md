@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Node.js 20.x, pnpm 9.x.
+- Node.js 20.x or newer, pnpm 9.x or newer. (Executed against Node 26.5.0 / pnpm 11.15.1, which scaffolds Vite 8 + TypeScript 6 + Vitest 4.)
 - No UI framework (no React/Next) — vanilla TypeScript only.
 - All assets (textures, GeoJSON) served from the app's own origin; no CDN URLs at runtime.
 - `vietnam-34-provinces.geojson` must contain exactly **34** features; provenance and attribution recorded in `frontend/public/data/README.md` (source: https://github.com/nguyenduy1133/Free-GIS-Data, attribution "Nguyen Duy Liem").
@@ -31,13 +31,13 @@
 - Create: `frontend/` (via Vite scaffold: `package.json`, `tsconfig.json`, `index.html`, `src/`, `.gitignore`)
 - Create: `frontend/src/style.css` (replace template content)
 - Modify: `frontend/index.html`, `frontend/package.json`
-- Delete: `frontend/src/counter.ts`, `frontend/src/typescript.svg`, `frontend/public/vite.svg`
+- Delete: `frontend/src/counter.ts`, `frontend/src/assets/`, `frontend/public/favicon.svg`, `frontend/public/icons.svg` (exact leftovers vary by Vite template version — list `src/` and `public/` first)
 
 **Interfaces:**
 - Consumes: nothing (first task).
 - Produces: a building, testable app shell. `index.html` contains `<div id="app"></div>`; `pnpm dev`, `pnpm build`, `pnpm test` all work. Later tasks put source in `frontend/src/` and assets in `frontend/public/`.
 
-- [ ] **Step 1: Scaffold the project**
+- [x] **Step 1: Scaffold the project**
 
 ```bash
 cd /Users/huyng/ws/earth-map
@@ -48,7 +48,7 @@ pnpm add globe.gl
 pnpm add -D vitest @types/geojson
 ```
 
-- [ ] **Step 2: Replace the template shell**
+- [x] **Step 2: Replace the template shell**
 
 Replace `frontend/index.html` with:
 
@@ -112,10 +112,10 @@ document.querySelector<HTMLDivElement>('#app')!.textContent = 'Earth Map';
 Delete the template leftovers:
 
 ```bash
-rm frontend/src/counter.ts frontend/src/typescript.svg frontend/public/vite.svg
+rm -rf frontend/src/counter.ts frontend/src/assets frontend/public/favicon.svg frontend/public/icons.svg
 ```
 
-- [ ] **Step 3: Add the test script**
+- [x] **Step 3: Add the test script**
 
 In `frontend/package.json`, add to `"scripts"`:
 
@@ -123,7 +123,7 @@ In `frontend/package.json`, add to `"scripts"`:
 "test": "vitest run"
 ```
 
-- [ ] **Step 4: Verify dev server, build, and test runner**
+- [x] **Step 4: Verify dev server, build, and test runner**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -135,7 +135,7 @@ If `pnpm test` fails on "no test files", change the script to `"test": "vitest r
 
 Then run `pnpm dev`, open http://localhost:5173, and confirm a black page showing "Earth Map". Stop the server.
 
-- [ ] **Step 5: Commit (task done)**
+- [x] **Step 5: Commit (task done)**
 
 Mark all Task 1 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 

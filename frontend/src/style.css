@@ -1,0 +1,29 @@
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+.fallback {
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  padding-top: 40vh;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(200, 40, 40, 0.9);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  z-index: 10;
+}
