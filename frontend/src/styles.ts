@@ -4,6 +4,9 @@ import type { ZoomBand } from './zoomLevels';
 export interface PolygonStyleContext {
   band: ZoomBand;
   hovered: Feature | null;
+  // The country the detail view is focused on. Its border is highlighted so the
+  // user always knows which country's subdivisions they're looking at.
+  selected: Feature | null;
 }
 
 // Caps are invisible but still present: three-globe only builds (and therefore
@@ -22,11 +25,25 @@ const SUBDIVISION_STROKE = 'rgba(160, 230, 255, 0.6)';
 // borders still look painted on rather than floating.
 export const POLYGON_ALTITUDE = 0.005;
 
-export function polygonCapColor(f: Feature, ctx: PolygonStyleContext): string {
-  return f === ctx.hovered ? HOVER_FILL : NO_FILL;
+// The focused country in the detail band is invisible in the polygon layer: its
+// highlighted outline is drawn separately as a glowing path (see border.ts), and
+// it's kept in the polygon data only so clicks inside it still resolve to the
+// country (keeping the user in the detail view) rather than to open ocean.
+function isDetailFocus(f: Feature, ctx: PolygonStyleContext): boolean {
+  return ctx.band === 'detail' && f === ctx.selected;
 }
 
-export function polygonStrokeColor(f: Feature, ctx: PolygonStyleContext): string {
+export function polygonCapColor(f: Feature, ctx: PolygonStyleContext): string | null {
+  if (f === ctx.hovered) return HOVER_FILL;
+  // No cap keeps the focus country out of hover raycasting, so subdivisions
+  // overlaid beneath it stay hoverable and don't z-fight a coplanar cap.
+  if (isDetailFocus(f, ctx)) return null;
+  return NO_FILL;
+}
+
+export function polygonStrokeColor(f: Feature, ctx: PolygonStyleContext): string | null {
   if (f === ctx.hovered) return HOVER_STROKE;
+  // Falsy stroke tells three-globe to hide the line; the glow path replaces it.
+  if (isDetailFocus(f, ctx)) return null;
   return ctx.band === 'detail' ? SUBDIVISION_STROKE : COUNTRY_STROKE;
 }

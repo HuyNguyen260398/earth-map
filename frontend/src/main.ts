@@ -3,6 +3,7 @@ import type { Feature, FeatureCollection } from 'geojson';
 import { createGlobe, upgradeTerrainTexture } from './globe';
 import { attachInteractions } from './interactions';
 import { buildPolygons, featureAt, isVietnam } from './layers';
+import { buildBorderPaths, buildProvinceBorderPaths } from './border';
 import { INITIAL_NAV_STATE, navigate, type NavEvent, type NavState } from './navigation';
 import { boundsAltitude, geometryBounds, geometryCentroid } from './geo';
 import { polygonCapColor, polygonStrokeColor } from './styles';
@@ -49,10 +50,12 @@ if (!webglSupported()) {
   let flyingUntil = 0;
 
   function applyStyles(): void {
-    const ctx = { band: nav.band, hovered };
+    const ctx = { band: nav.band, hovered, selected: nav.selected };
+    // A null cap/stroke tells three-globe to skip a polygon's top face / outline;
+    // globe.gl types these accessors as string, so widen them like globe.ts does.
     globe
-      .polygonCapColor((d) => polygonCapColor(d as Feature, ctx))
-      .polygonStrokeColor((d) => polygonStrokeColor(d as Feature, ctx));
+      .polygonCapColor(((d: object) => polygonCapColor(d as Feature, ctx)) as unknown as (d: object) => string)
+      .polygonStrokeColor(((d: object) => polygonStrokeColor(d as Feature, ctx)) as unknown as (d: object) => string);
   }
 
   async function renderPolygons(): Promise<void> {
@@ -65,6 +68,17 @@ if (!webglSupported()) {
     }
     applyStyles();
     globe.polygonsData(buildPolygons(nav.band, countries, provinces, nav.selected));
+    globe.pathsData(borderPaths());
+  }
+
+  // Glowing outline around the country whose subdivisions we're viewing. When we
+  // have that country's subdivisions, trace their dissolved outer edge so the
+  // highlight lands exactly on the province lines; otherwise fall back to the
+  // country's own (coarser, smoothed) outline.
+  function borderPaths(): ReturnType<typeof buildBorderPaths> {
+    if (nav.band !== 'detail') return [];
+    if (isVietnam(nav.selected) && provinces) return buildProvinceBorderPaths(provinces);
+    return buildBorderPaths(nav.selected);
   }
 
   function flyTo(pov: { lat?: number; lng?: number; altitude: number }): void {

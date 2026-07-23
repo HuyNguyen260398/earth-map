@@ -1,5 +1,6 @@
 import Globe, { type GlobeInstance } from 'globe.gl';
 import { POLYGON_ALTITUDE } from './styles';
+import type { BorderPath, BorderPoint } from './border';
 
 const BASE_TEXTURE = '/textures/earth-day-4k.jpg';
 const DETAILED_TEXTURE = '/textures/earth-day-8k.jpg';
@@ -36,7 +37,20 @@ export function createGlobe(container: HTMLElement): GlobeInstance {
     // Falsy side colour tells three-globe to skip side walls entirely; the
     // polygons lie flush on the surface, so they'd only cost triangles.
     .polygonSideColor(noSides)
-    .polygonsTransitionDuration(200);
+    .polygonsTransitionDuration(200)
+    // Paths layer draws the highlighted country border as glowing fat lines.
+    // Points arrive as [lat, lng, altitude]; a numeric stroke opts each line
+    // into three-globe's Line2 fat lines (real width + rounded joins).
+    .pathPoints((d: object) => (d as BorderPath).points)
+    .pathPointLat((p: object) => (p as BorderPoint)[0])
+    .pathPointLng((p: object) => (p as BorderPoint)[1])
+    .pathPointAlt((p: object) => (p as BorderPoint)[2])
+    .pathColor((d: object) => (d as BorderPath).color)
+    .pathStroke((d: object) => (d as BorderPath).stroke)
+    // No draw-on animation: the border should just be there when a country is
+    // picked, not sweep in from one vertex every time.
+    .pathTransitionDuration(0)
+    .pathsData([]);
 
   const material = globe.globeMaterial() as GlobeMaterial;
   material.bumpScale = BUMP_SCALE;

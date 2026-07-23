@@ -32,6 +32,10 @@ export function buildPolygons(
   // entirely so nothing competes with the subdivisions on screen. Vietnam is
   // the only country we carry subdivisions for; until they load (or for any
   // other country) the national outline stands in.
-  if (isVietnam(selected) && provinces) return provinces.features;
+  //
+  // The selected country is appended last as a border overlay so the user can
+  // see which country they're inside — styles.ts traces it with a bold outline
+  // and gives it no cap, keeping it clear of the subdivisions' hover raycasting.
+  if (isVietnam(selected) && provinces) return [...provinces.features, selected];
   return [selected];
 }

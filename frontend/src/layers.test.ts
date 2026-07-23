@@ -34,8 +34,14 @@ describe('buildPolygons', () => {
     expect(buildPolygons('countries', countries, provinces, null)).toHaveLength(3);
   });
 
-  it('shows only the selected country provinces at detail band', () => {
-    expect(buildPolygons('detail', countries, provinces, vietnam)).toEqual(provinces.features);
+  it('shows the selected country provinces plus its border overlay at detail band', () => {
+    expect(buildPolygons('detail', countries, provinces, vietnam)).toEqual([...provinces.features, vietnam]);
+  });
+
+  it('appends the country overlay last so subdivisions win click resolution', () => {
+    const result = buildPolygons('detail', countries, provinces, vietnam);
+    expect(result[result.length - 1]).toBe(vietnam);
+    expect(result.slice(0, -1)).toEqual(provinces.features);
   });
 
   it('drops every other country at detail band', () => {
