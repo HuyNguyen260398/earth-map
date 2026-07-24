@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
-import { buildPolygons, featureAt, featureName, isVietnam } from './layers';
+import { buildPolygons, featureAt, featureName, isVietnam, type PolygonInputs } from './layers';
 
 const geometry: Geometry = { type: 'Polygon', coordinates: [[[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]] };
 
@@ -12,8 +12,13 @@ function province(name: string): Feature {
   return { type: 'Feature', geometry, properties: { name, level: 'province' } };
 }
 
+function ward(name: string): Feature {
+  return { type: 'Feature', geometry, properties: { name, level: 'ward' } };
+}
+
 const vietnam = country('Vietnam', 'VNM');
 const thailand = country('Thailand', 'THA');
+const haNoi = province('Hà Nội');
 
 const countries: FeatureCollection = {
   type: 'FeatureCollection',
@@ -22,42 +27,62 @@ const countries: FeatureCollection = {
 
 const provinces: FeatureCollection = {
   type: 'FeatureCollection',
-  features: [province('Hà Nội'), province('Đà Nẵng')],
+  features: [haNoi, province('Đà Nẵng')],
 };
+
+const wards: FeatureCollection = {
+  type: 'FeatureCollection',
+  features: [ward('Ba Đình'), ward('Hoàn Kiếm')],
+};
+
+function inputs(over: Partial<PolygonInputs> = {}): PolygonInputs {
+  return { band: 'globe', countries, provinces, wards, country: null, province: null, ...over };
+}
 
 describe('buildPolygons', () => {
   it('returns no polygons at globe band', () => {
-    expect(buildPolygons('globe', countries, provinces, null)).toEqual([]);
+    expect(buildPolygons(inputs({ band: 'globe' }))).toEqual([]);
   });
 
   it('returns all countries at countries band', () => {
-    expect(buildPolygons('countries', countries, provinces, null)).toHaveLength(3);
+    expect(buildPolygons(inputs({ band: 'countries' }))).toHaveLength(3);
   });
 
   it('shows the selected country provinces plus its border overlay at detail band', () => {
-    expect(buildPolygons('detail', countries, provinces, vietnam)).toEqual([...provinces.features, vietnam]);
+    expect(buildPolygons(inputs({ band: 'detail', country: vietnam }))).toEqual([...provinces.features, vietnam]);
   });
 
   it('appends the country overlay last so subdivisions win click resolution', () => {
-    const result = buildPolygons('detail', countries, provinces, vietnam);
+    const result = buildPolygons(inputs({ band: 'detail', country: vietnam }));
     expect(result[result.length - 1]).toBe(vietnam);
     expect(result.slice(0, -1)).toEqual(provinces.features);
   });
 
   it('drops every other country at detail band', () => {
-    expect(buildPolygons('detail', countries, provinces, thailand)).toEqual([thailand]);
+    expect(buildPolygons(inputs({ band: 'detail', country: thailand }))).toEqual([thailand]);
   });
 
   it('falls back to the country outline while its provinces load', () => {
-    expect(buildPolygons('detail', countries, null, vietnam)).toEqual([vietnam]);
+    expect(buildPolygons(inputs({ band: 'detail', provinces: null, country: vietnam }))).toEqual([vietnam]);
+  });
+
+  it('shows the province wards plus its border overlay at ward band', () => {
+    expect(buildPolygons(inputs({ band: 'ward', country: vietnam, province: haNoi }))).toEqual([
+      ...wards.features,
+      haNoi,
+    ]);
+  });
+
+  it('falls back to the province outline while its wards load', () => {
+    expect(buildPolygons(inputs({ band: 'ward', wards: null, country: vietnam, province: haNoi }))).toEqual([haNoi]);
   });
 
   it('returns empty when countries not yet loaded', () => {
-    expect(buildPolygons('countries', null, provinces, null)).toEqual([]);
+    expect(buildPolygons(inputs({ band: 'countries', countries: null }))).toEqual([]);
   });
 
   it('shows all countries at detail band when nothing is selected', () => {
-    expect(buildPolygons('detail', countries, provinces, null)).toHaveLength(3);
+    expect(buildPolygons(inputs({ band: 'detail', country: null }))).toHaveLength(3);
   });
 });
 

@@ -25,25 +25,30 @@ const SUBDIVISION_STROKE = 'rgba(160, 230, 255, 0.6)';
 // borders still look painted on rather than floating.
 export const POLYGON_ALTITUDE = 0.005;
 
-// The focused country in the detail band is invisible in the polygon layer: its
-// highlighted outline is drawn separately as a glowing path (see border.ts), and
-// it's kept in the polygon data only so clicks inside it still resolve to the
-// country (keeping the user in the detail view) rather than to open ocean.
-function isDetailFocus(f: Feature, ctx: PolygonStyleContext): boolean {
-  return ctx.band === 'detail' && f === ctx.selected;
+// The drill-down bands (detail, ward) show one shape's subdivisions. `selected`
+// is that focus shape (a country, then a province); it's invisible in the
+// polygon layer — its highlighted outline is drawn separately as a glowing path
+// (see border.ts) — and kept in the polygon data only so clicks inside it still
+// resolve to the focus, keeping the user at that level rather than open ocean.
+function isSubdivided(band: PolygonStyleContext['band']): boolean {
+  return band === 'detail' || band === 'ward';
+}
+
+function isFocusOverlay(f: Feature, ctx: PolygonStyleContext): boolean {
+  return isSubdivided(ctx.band) && f === ctx.selected;
 }
 
 export function polygonCapColor(f: Feature, ctx: PolygonStyleContext): string | null {
   if (f === ctx.hovered) return HOVER_FILL;
-  // No cap keeps the focus country out of hover raycasting, so subdivisions
+  // No cap keeps the focus shape out of hover raycasting, so the subdivisions
   // overlaid beneath it stay hoverable and don't z-fight a coplanar cap.
-  if (isDetailFocus(f, ctx)) return null;
+  if (isFocusOverlay(f, ctx)) return null;
   return NO_FILL;
 }
 
 export function polygonStrokeColor(f: Feature, ctx: PolygonStyleContext): string | null {
   if (f === ctx.hovered) return HOVER_STROKE;
   // Falsy stroke tells three-globe to hide the line; the glow path replaces it.
-  if (isDetailFocus(f, ctx)) return null;
-  return ctx.band === 'detail' ? SUBDIVISION_STROKE : COUNTRY_STROKE;
+  if (isFocusOverlay(f, ctx)) return null;
+  return isSubdivided(ctx.band) ? SUBDIVISION_STROKE : COUNTRY_STROKE;
 }

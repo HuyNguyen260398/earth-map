@@ -2,8 +2,8 @@ import './style.css';
 import type { Feature, FeatureCollection } from 'geojson';
 import { createGlobe, upgradeTerrainTexture } from './globe';
 import { attachInteractions } from './interactions';
-import { buildPolygons, featureAt, isVietnam } from './layers';
-import { buildBorderPaths, buildProvinceBorderPaths } from './border';
+import { buildPolygons, featureAt, featureName, isVietnam } from './layers';
+import { buildBorderPaths, buildDissolvedBorderPaths, type BorderPath } from './border';
 import { INITIAL_NAV_STATE, navigate, type NavEvent, type NavState } from './navigation';
 import { boundsAltitude, geometryBounds, geometryCentroid } from './geo';
 import { polygonCapColor, polygonStrokeColor } from './styles';
@@ -12,8 +12,10 @@ import {
   DETAIL_VIEW_MAX_ALTITUDE,
   DETAIL_VIEW_MIN_ALTITUDE,
   GLOBE_VIEW_ALTITUDE,
+  WARD_VIEW_MAX_ALTITUDE,
+  WARD_VIEW_MIN_ALTITUDE,
 } from './zoomLevels';
-import { loadCountries, loadProvinces } from './data';
+import { loadCountries, loadProvinces, loadWards } from './data';
 
 const FLY_MS = 1000;
 
@@ -45,12 +47,20 @@ if (!webglSupported()) {
   let hovered: Feature | null = null;
   let countries: FeatureCollection | null = null;
   let provinces: FeatureCollection | null = null;
+  // Wards for whichever province is currently open (keyed by name below).
+  let wards: FeatureCollection | null = null;
+  let wardsProvince: string | null = null;
   // Camera flights pass through altitudes belonging to other bands; treating
   // those as user zooming would yank the band back mid-flight.
   let flyingUntil = 0;
 
+  // The subdivided shape in focus: a province at the ward band, a country above.
+  function focusFeature(): Feature | null {
+    return nav.band === 'ward' ? nav.province : nav.selected;
+  }
+
   function applyStyles(): void {
-    const ctx = { band: nav.band, hovered, selected: nav.selected };
+    const ctx = { band: nav.band, hovered, selected: focusFeature() };
     // A null cap/stroke tells three-globe to skip a polygon's top face / outline;
     // globe.gl types these accessors as string, so widen them like globe.ts does.
     globe
@@ -61,24 +71,44 @@ if (!webglSupported()) {
   async function renderPolygons(): Promise<void> {
     try {
       if (nav.band !== 'globe' && !countries) countries = await loadCountries();
-      if (nav.band === 'detail' && isVietnam(nav.selected) && !provinces) provinces = await loadProvinces();
+      if (nav.band !== 'globe' && nav.band !== 'countries' && isVietnam(nav.selected) && !provinces) {
+        provinces = await loadProvinces();
+      }
+      if (nav.band === 'ward' && nav.province) await ensureWards(nav.province);
     } catch (err) {
       showToast('Failed to load map data — click again to retry.');
       console.error(err);
     }
     applyStyles();
-    globe.polygonsData(buildPolygons(nav.band, countries, provinces, nav.selected));
+    globe.polygonsData(
+      buildPolygons({ band: nav.band, countries, provinces, wards, country: nav.selected, province: nav.province }),
+    );
     globe.pathsData(borderPaths());
   }
 
-  // Glowing outline around the country whose subdivisions we're viewing. When we
-  // have that country's subdivisions, trace their dissolved outer edge so the
-  // highlight lands exactly on the province lines; otherwise fall back to the
-  // country's own (coarser, smoothed) outline.
-  function borderPaths(): ReturnType<typeof buildBorderPaths> {
-    if (nav.band !== 'detail') return [];
-    if (isVietnam(nav.selected) && provinces) return buildProvinceBorderPaths(provinces);
-    return buildBorderPaths(nav.selected);
+  // Load (and cache) the wards for a province, tracking which province they're
+  // for so a stale set isn't rendered after switching provinces.
+  async function ensureWards(province: Feature): Promise<void> {
+    const name = featureName(province);
+    if (wardsProvince === name && wards) return;
+    wards = await loadWards(name);
+    wardsProvince = name;
+  }
+
+  // Glowing outline around the subdivided shape in focus. When we have its
+  // subdivisions, trace their dissolved outer edge so the highlight lands exactly
+  // on the subdivision lines; otherwise fall back to the shape's own (coarser,
+  // smoothed) outline.
+  function borderPaths(): BorderPath[] {
+    if (nav.band === 'ward') {
+      if (wards && wardsProvince === featureName(nav.province!)) return buildDissolvedBorderPaths(wards);
+      return buildBorderPaths(nav.province);
+    }
+    if (nav.band === 'detail') {
+      if (isVietnam(nav.selected) && provinces) return buildDissolvedBorderPaths(provinces);
+      return buildBorderPaths(nav.selected);
+    }
+    return [];
   }
 
   function flyTo(pov: { lat?: number; lng?: number; altitude: number }): void {
@@ -89,6 +119,14 @@ if (!webglSupported()) {
   function moveCamera(state: NavState, event: NavEvent): void {
     if (state.band === 'globe') {
       flyTo({ altitude: GLOBE_VIEW_ALTITUDE });
+      return;
+    }
+    if (state.band === 'ward' && state.province?.geometry) {
+      const { geometry } = state.province;
+      flyTo({
+        ...geometryCentroid(geometry),
+        altitude: boundsAltitude(geometryBounds(geometry), WARD_VIEW_MIN_ALTITUDE, WARD_VIEW_MAX_ALTITUDE),
+      });
       return;
     }
     if (state.band === 'detail' && state.selected?.geometry) {

@@ -54,3 +54,35 @@ mislabelled feature is centred at ~10.55°N in the Mekong Delta, matching the
 new Đồng Tháp (Đồng Tháp + Tiền Giang). The script renames the southern feature
 to `Đồng Tháp`; the rule is keyed on centroid latitude, so it stops applying if
 the source is ever fixed upstream.
+
+## wards/
+
+- Commune-level boundaries (phường / xã / đặc khu) for all 34 provinces after
+  the 2025 reform — 3,321 units total — one merged GeoJSON per province, plus
+  `index.json` mapping each province name (as it appears in
+  `vietnam-34-provinces.geojson`) to its file. The app loads one province's
+  wards on demand when you drill into it.
+- Source: https://github.com/thanglequoc/vietnamese-provinces-database
+  (`json/geojson/` export, v4.0.0, June 2026), derived from the official
+  Vietnam Administrative Units Reference Map.
+
+### Processing
+
+The raw export is ~600 MB (one file per ward). Regenerate with:
+
+    # 1. Download + unzip the export's ward GeoJSON archive, e.g.
+    curl -L -o wards.zip https://raw.githubusercontent.com/thanglequoc/\
+    vietnamese-provinces-database/master/json/vn_provinces_wards_geojson_<date>.zip
+    unzip -q wards.zip -d wards_src    # → wards_src/geojson/<code>_<slug>/wards/*.geojson
+
+    # 2. Merge + simplify per province into public/data/wards/
+    node scripts/prepare-wards.mjs wards_src/geojson public/data/wards 6
+
+`prepare-wards.mjs` merges each province's ward files into one FeatureCollection,
+normalizes properties to `{ name, level: 'ward' }`, rewinds rings to three-globe's
+winding (see above), and topology-preserving-simplifies to `6%` with 0.0001°
+precision (so adjacent wards keep shared edges). All 34 provinces total ~8 MB;
+raise the last argument to simplify harder. It maps the export's province names
+to ours by folding away the "TP." prefix and Vietnamese tone-mark placement
+(the export writes e.g. "Thanh Hoá" where we write "Thanh Hóa"), and fails if
+any of the 34 official units is unmatched.

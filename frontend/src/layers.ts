@@ -20,22 +20,34 @@ export function featureAt(features: Feature[], lat: number, lng: number): Featur
   return features.find((f) => f.geometry && geometryContains(f.geometry, lat, lng)) ?? null;
 }
 
-export function buildPolygons(
-  band: ZoomBand,
-  countries: FeatureCollection | null,
-  provinces: FeatureCollection | null,
-  selected: Feature | null = null,
-): Feature[] {
+export interface PolygonInputs {
+  band: ZoomBand;
+  countries: FeatureCollection | null;
+  provinces: FeatureCollection | null;
+  wards: FeatureCollection | null;
+  // Selections carried down the ladder: the focused country (detail + ward) and
+  // the focused province (ward).
+  country: Feature | null;
+  province: Feature | null;
+}
+
+// The polygons to render for the current band. Each drill-down level appends its
+// focus shape last as an invisible overlay: styles.ts gives it no cap or stroke,
+// so it stays clear of hover raycasting but still resolves clicks inside it (see
+// featureAt), keeping the user in that level instead of dropping to open ocean.
+export function buildPolygons(i: PolygonInputs): Feature[] {
+  const { band, countries, provinces, wards, country, province } = i;
   if (band === 'globe' || !countries) return [];
-  if (band === 'countries' || !selected) return countries.features;
-  // Detail band focuses on one country: its neighbours' borders are dropped
-  // entirely so nothing competes with the subdivisions on screen. Vietnam is
-  // the only country we carry subdivisions for; until they load (or for any
-  // other country) the national outline stands in.
-  //
-  // The selected country is appended last as a border overlay so the user can
-  // see which country they're inside — styles.ts traces it with a bold outline
-  // and gives it no cap, keeping it clear of the subdivisions' hover raycasting.
-  if (isVietnam(selected) && provinces) return [...provinces.features, selected];
-  return [selected];
+  if (band === 'countries' || !country) return countries.features;
+
+  if (band === 'detail') {
+    // Vietnam is the only country we carry subdivisions for; until they load (or
+    // for any other country) the national outline stands in as the overlay.
+    if (isVietnam(country) && provinces) return [...provinces.features, country];
+    return [country];
+  }
+
+  // ward band: the province's wards, with the province outline as the overlay.
+  if (province && wards) return [...wards.features, province];
+  return province ? [province] : [];
 }

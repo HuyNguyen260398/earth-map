@@ -51,13 +51,14 @@ export function buildBorderPaths(country: Feature | null): BorderPath[] {
   return glowPaths(significantRings(outerRings(country?.geometry ?? null)), true);
 }
 
-// Preferred border for a country we do carry subdivisions for: trace the
-// provinces' own outer edge so the highlight sits exactly on the subdivision
-// lines rather than floating off the coarse national outline. The subdivision
-// data is high-resolution, so the dissolved edge is already smooth — corner
-// cutting is skipped here (it would pull the glow off the province lines).
-export function buildProvinceBorderPaths(provinces: FeatureCollection | null): BorderPath[] {
-  return glowPaths(significantRings(dissolveOuterRings(provinces)), false);
+// Preferred border for a shape we carry subdivisions for: trace the
+// subdivisions' own outer edge (provinces dissolved into a country, wards
+// dissolved into a province) so the highlight sits exactly on the subdivision
+// lines rather than floating off a coarse outline. Subdivision data is
+// high-resolution, so the dissolved edge is already smooth — corner cutting is
+// skipped here (it would pull the glow off the subdivision lines).
+export function buildDissolvedBorderPaths(subdivisions: FeatureCollection | null): BorderPath[] {
+  return glowPaths(significantRings(dissolveOuterRings(subdivisions)), false);
 }
 
 // Stack the glow layers over each supplied ring. `smooth` rounds coarse corners;
@@ -77,30 +78,30 @@ function glowPaths(rings: Position[][], smooth: boolean): BorderPath[] {
   return paths;
 }
 
-// Merge every province into one shape and return its outer rings — the national
-// border implied by the subdivisions. Union is robust to the source data being
-// only partially noded (shared edges that don't line up vertex-for-vertex),
-// which plain edge-cancellation is not. Memoized: the province set loads once.
+// Merge every subdivision into one shape and return its outer rings — the parent
+// border implied by them. Union is robust to the source data being only
+// partially noded (shared edges that don't line up vertex-for-vertex), which
+// plain edge-cancellation is not. Memoized: each set loads once.
 const dissolveCache = new WeakMap<FeatureCollection, Position[][]>();
 
-function dissolveOuterRings(provinces: FeatureCollection | null): Position[][] {
-  if (!provinces?.features.length) return [];
-  const cached = dissolveCache.get(provinces);
+function dissolveOuterRings(fc: FeatureCollection | null): Position[][] {
+  if (!fc?.features.length) return [];
+  const cached = dissolveCache.get(fc);
   if (cached) return cached;
 
-  const polygons = provinces.features.flatMap(provincePolygons) as unknown as PcPolygon[];
+  const polygons = fc.features.flatMap(featurePolygons) as unknown as PcPolygon[];
   if (!polygons.length) return [];
   const dissolved = union(polygons[0], ...polygons.slice(1));
   // Outer ring per merged polygon; holes (interior boundaries) aren't the border.
   const rings = dissolved.map((poly) => poly[0] as unknown as Position[]).filter(Boolean);
 
-  dissolveCache.set(provinces, rings);
+  dissolveCache.set(fc, rings);
   return rings;
 }
 
-// Every province polygon as its own polygon-clipping input, so a MultiPolygon
-// province contributes each of its parts.
-function provincePolygons(f: Feature): Position[][][] {
+// Every feature polygon as its own polygon-clipping input, so a MultiPolygon
+// contributes each of its parts.
+function featurePolygons(f: Feature): Position[][][] {
   const g = f.geometry;
   if (!g) return [];
   if (g.type === 'Polygon') return [g.coordinates];

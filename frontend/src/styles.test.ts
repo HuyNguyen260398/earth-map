@@ -33,6 +33,12 @@ describe('polygonStrokeColor', () => {
   it('prefers the hover stroke over hiding the focus country', () => {
     expect(polygonStrokeColor(country, ctx({ selected: country, hovered: country }))).not.toBeNull();
   });
+
+  it('applies the same rules one level down in the ward band', () => {
+    // Focus province hidden; a ward gets the plain subdivision stroke.
+    expect(polygonStrokeColor(province, ctx({ band: 'ward', selected: province }))).toBeNull();
+    expect(polygonStrokeColor(feature('Ba Đình'), ctx({ band: 'ward', selected: province }))).not.toBeNull();
+  });
 });
 
 describe('polygonCapColor', () => {

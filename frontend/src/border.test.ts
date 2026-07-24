@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Feature, FeatureCollection, Position } from 'geojson';
-import { buildBorderPaths, buildProvinceBorderPaths, smoothClosedRing } from './border';
+import { buildBorderPaths, buildDissolvedBorderPaths, smoothClosedRing } from './border';
 
 // A closed unit square (first point repeated as last, as GeoJSON rings are).
 const square: Position[] = [[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]];
@@ -80,7 +80,7 @@ describe('buildBorderPaths', () => {
   });
 });
 
-describe('buildProvinceBorderPaths', () => {
+describe('buildDissolvedBorderPaths', () => {
   const LAYERS = buildBorderPaths(polygonCountry(square)).length;
 
   function province(ring: Position[]): Feature {
@@ -96,12 +96,12 @@ describe('buildProvinceBorderPaths', () => {
   const east: Position[] = [[2, 0], [4, 0], [4, 2], [2, 2], [2, 0]];
 
   it('returns no paths without provinces', () => {
-    expect(buildProvinceBorderPaths(null)).toEqual([]);
-    expect(buildProvinceBorderPaths(collection())).toEqual([]);
+    expect(buildDissolvedBorderPaths(null)).toEqual([]);
+    expect(buildDissolvedBorderPaths(collection())).toEqual([]);
   });
 
   it('dissolves adjacent provinces into a single outer border', () => {
-    const paths = buildProvinceBorderPaths(collection(province(west), province(east)));
+    const paths = buildDissolvedBorderPaths(collection(province(west), province(east)));
     // One merged shape → one ring → one stack of glow layers (not two).
     expect(paths.length).toBe(LAYERS);
     // The border spans the union, and the shared internal edge is gone.
@@ -114,14 +114,14 @@ describe('buildProvinceBorderPaths', () => {
   });
 
   it('traces the province edge without corner-cutting (stays a tight box)', () => {
-    const paths = buildProvinceBorderPaths(collection(province(west), province(east)));
+    const paths = buildDissolvedBorderPaths(collection(province(west), province(east)));
     // A rectangle is ~5 points; smoothing would balloon this into dozens.
     expect(paths[0].points.length).toBeLessThanOrEqual(8);
   });
 
   it('keeps disjoint provinces as separate border loops', () => {
     const far: Position[] = [[100, 100], [104, 100], [104, 102], [100, 102], [100, 100]];
-    const paths = buildProvinceBorderPaths(collection(province(west), province(far)));
+    const paths = buildDissolvedBorderPaths(collection(province(west), province(far)));
     expect(paths.length).toBe(LAYERS * 2);
   });
 });
