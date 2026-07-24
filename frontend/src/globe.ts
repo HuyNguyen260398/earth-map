@@ -7,6 +7,23 @@ const DETAILED_TEXTURE = '/textures/earth-day-8k.jpg';
 const BUMP_TEXTURE = '/textures/earth-topology-4k.jpg';
 const SKY_TEXTURE = '/textures/night-sky.png';
 
+// A single global texture can't show street-level detail, so once the user
+// drills into a country we hand the globe over to three-globe's tile engine,
+// which streams Esri World Imagery satellite tiles (XYZ scheme, row before
+// column) at a zoom level chosen from the camera altitude. Attribution to Esri
+// is required whenever these are shown — see the credit in main.ts.
+export const SATELLITE_ATTRIBUTION = 'Imagery © Esri, Maxar, Earthstar Geographics';
+const esriSatelliteTileUrl = (x: number, y: number, level: number): string =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${level}/${y}/${x}`;
+
+// Toggle satellite tiles on (close up) or off (back to the Blue Marble texture).
+// three-globe hides the base globe while a tile URL is set and restores it when
+// cleared, so this cleanly swaps the two looks.
+export function setSatelliteTiles(globe: GlobeInstance, on: boolean): void {
+  const url = on ? esriSatelliteTileUrl : (null as unknown as typeof esriSatelliteTileUrl);
+  globe.globeTileEngineUrl(url);
+}
+
 // three-globe tessellates the sphere at 360/resolution segments; the default 4°
 // leaves a visibly faceted horizon once the globe fills the viewport.
 const CURVATURE_RESOLUTION = 1.5;

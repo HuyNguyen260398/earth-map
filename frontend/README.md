@@ -33,6 +33,14 @@ tessellated finely enough that the horizon has no visible facets, and a GEBCO
 elevation bump map provides relief shading. See
 [`public/textures/README.md`](public/textures/README.md).
 
+Even an 8k texture is blurry once a single province fills the screen, so from the
+detail band down the globe hands over to three-globe's tile engine, which streams
+**Esri World Imagery** satellite tiles at a zoom level chosen from the camera
+altitude (progressively sharper as you drill in). Zooming back out to the country
+map restores the Blue Marble texture. Esri requires the on-screen imagery credit
+that shows while the tiles are active; the tile source is a one-line change in
+`src/globe.ts` (any XYZ provider works — Mapbox Satellite, etc., with a token).
+
 ## Develop
 
     pnpm install

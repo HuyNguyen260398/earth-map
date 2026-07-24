@@ -1,6 +1,6 @@
 import './style.css';
 import type { Feature, FeatureCollection } from 'geojson';
-import { createGlobe, upgradeTerrainTexture } from './globe';
+import { createGlobe, setSatelliteTiles, upgradeTerrainTexture, SATELLITE_ATTRIBUTION } from './globe';
 import { attachInteractions } from './interactions';
 import { buildPolygons, featureAt, featureName, isVietnam } from './layers';
 import { buildBorderPaths, buildDissolvedBorderPaths, type BorderPath } from './border';
@@ -43,7 +43,16 @@ if (!webglSupported()) {
 } else {
   const globe = createGlobe(app);
 
+  // Esri requires visible attribution while its imagery is on screen; shown only
+  // when the satellite tiles are (see updateImagery).
+  const attribution = document.createElement('div');
+  attribution.className = 'attribution';
+  attribution.textContent = SATELLITE_ATTRIBUTION;
+  attribution.hidden = true;
+  document.body.appendChild(attribution);
+
   let nav: NavState = INITIAL_NAV_STATE;
+  let tilesOn = false;
   let hovered: Feature | null = null;
   let countries: FeatureCollection | null = null;
   let provinces: FeatureCollection | null = null;
@@ -146,12 +155,24 @@ if (!webglSupported()) {
     );
   }
 
+  // Satellite tiles stream in once a country is in focus (detail + ward), where
+  // the single global texture would otherwise be blurry; up high we keep the
+  // Blue Marble look. Toggling only on change avoids reloading tiles needlessly.
+  function updateImagery(): void {
+    const on = nav.band === 'detail' || nav.band === 'ward';
+    if (on === tilesOn) return;
+    tilesOn = on;
+    setSatelliteTiles(globe, on);
+    attribution.hidden = !on;
+  }
+
   function dispatch(event: NavEvent): void {
     const next = navigate(nav, event);
     if (next === nav) return;
     nav = next;
     if (event.type !== 'zoom') moveCamera(nav, event);
     if (nav.band !== 'globe') upgradeTerrainTexture(globe);
+    updateImagery();
     void renderPolygons();
   }
 

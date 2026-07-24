@@ -27,3 +27,23 @@ body,
   border-radius: 6px;
   z-index: 10;
 }
+
+/* Imagery credit, shown only while satellite tiles are on screen. */
+.attribution {
+  position: fixed;
+  bottom: 6px;
+  right: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.45);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.attribution[hidden] {
+  display: none;
+}
