@@ -1,6 +1,6 @@
 import type { Feature, FeatureCollection, Geometry, Position } from 'geojson';
 import { union, type Polygon as PcPolygon } from 'polygon-clipping';
-import { POLYGON_ALTITUDE } from './styles';
+import { NEAR_POLYGON_ALTITUDE } from './styles';
 
 // A vertex on a border path in the order globe.gl's path layer reads it:
 // [lat, lng, altitude]. (GeoJSON is [lng, lat] — we swap when building these.)
@@ -23,15 +23,19 @@ interface GlowLayer {
   lift: number; // added to the base border altitude
 }
 
-// Just clear of the subdivision strokes (which sit at POLYGON_ALTITUDE) so the
-// glow reads as floating a hair above the surface rather than fighting them.
-const BORDER_ALTITUDE = POLYGON_ALTITUDE + 0.001;
+// Borders only appear at the drill-down bands, where the polygon layer hugs the
+// surface (NEAR_POLYGON_ALTITUDE) to stay aligned with the satellite imagery.
+// Sit just clear of the subdivision strokes (≈ that altitude + 1e-4) so the glow
+// reads as floating a hair above them, and keep the whole stack low: at this
+// altitude the same lift that used to separate the layers would parallax-smear
+// them across several pixels close up, so the separations are small too.
+const BORDER_ALTITUDE = NEAR_POLYGON_ALTITUDE + 0.0002;
 
 const GLOW_LAYERS: GlowLayer[] = [
   { color: 'rgba(120, 200, 255, 0.10)', stroke: 9, lift: 0 },
-  { color: 'rgba(170, 224, 255, 0.24)', stroke: 5.5, lift: 0.0004 },
-  { color: 'rgba(210, 240, 255, 0.55)', stroke: 3, lift: 0.0008 },
-  { color: 'rgba(245, 251, 255, 0.95)', stroke: 1.5, lift: 0.0012 },
+  { color: 'rgba(170, 224, 255, 0.24)', stroke: 5.5, lift: 0.00008 },
+  { color: 'rgba(210, 240, 255, 0.55)', stroke: 3, lift: 0.00016 },
+  { color: 'rgba(245, 251, 255, 0.95)', stroke: 1.5, lift: 0.00024 },
 ];
 
 // Natural Earth country outlines are coarse (Vietnam is 44 vertices), so their

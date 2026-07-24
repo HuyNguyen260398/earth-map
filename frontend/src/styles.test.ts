@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Feature, Geometry } from 'geojson';
-import { polygonCapColor, polygonStrokeColor, type PolygonStyleContext } from './styles';
+import {
+  NEAR_POLYGON_ALTITUDE,
+  POLYGON_ALTITUDE,
+  polygonAltitudeFor,
+  polygonCapColor,
+  polygonStrokeColor,
+  type PolygonStyleContext,
+} from './styles';
 
 const geometry: Geometry = { type: 'Polygon', coordinates: [[[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]] };
 
@@ -14,6 +21,22 @@ const province = feature('Hà Nội');
 function ctx(overrides: Partial<PolygonStyleContext> = {}): PolygonStyleContext {
   return { band: 'detail', hovered: null, selected: null, ...overrides };
 }
+
+describe('polygonAltitudeFor', () => {
+  it('hugs the surface at the drill-down bands to stay aligned with the imagery', () => {
+    expect(polygonAltitudeFor('detail')).toBe(NEAR_POLYGON_ALTITUDE);
+    expect(polygonAltitudeFor('ward')).toBe(NEAR_POLYGON_ALTITUDE);
+  });
+
+  it('keeps the higher lift up high where z-fighting, not parallax, is the risk', () => {
+    expect(polygonAltitudeFor('globe')).toBe(POLYGON_ALTITUDE);
+    expect(polygonAltitudeFor('countries')).toBe(POLYGON_ALTITUDE);
+  });
+
+  it('makes the close-up lift much smaller (parallax scales with altitude)', () => {
+    expect(NEAR_POLYGON_ALTITUDE).toBeLessThan(POLYGON_ALTITUDE / 5);
+  });
+});
 
 describe('polygonStrokeColor', () => {
   it('hides the focus country stroke at the detail band (glow path draws it)', () => {

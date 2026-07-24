@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
-import { buildPolygons, featureAt, featureName, isVietnam, type PolygonInputs } from './layers';
+import { buildPolygons, featureAt, featureName, hoverFeatureAt, isVietnam, type PolygonInputs } from './layers';
 
 const geometry: Geometry = { type: 'Polygon', coordinates: [[[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]]] };
 
@@ -101,6 +101,33 @@ describe('featureAt', () => {
   it('returns null where no feature covers the point', () => {
     expect(featureAt([vietnam, east], 2, 8)).toBeNull();
     expect(featureAt([], 2, 2)).toBeNull();
+  });
+});
+
+describe('hoverFeatureAt', () => {
+  // At the drill-down bands the focus shape is an invisible overlay laid last
+  // over its subdivisions (see buildPolygons). Hover must pick out the
+  // subdivision under the pointer but never the overlay itself — otherwise the
+  // whole focus shape would light up in the gaps between subdivisions.
+  const focus = province('Focus'); // stands in for the country/province overlay
+  const sub = ward('Sub'); // a subdivision drawn over the focus
+
+  it('resolves the subdivision under the point, not the focus overlay', () => {
+    // sub is listed first (subdivisions win), focus overlay last
+    expect(hoverFeatureAt([sub, focus], 2, 2, focus)).toBe(sub);
+  });
+
+  it('returns null when the point only falls on the focus overlay', () => {
+    // east is outside the [0,4] square, so only the focus overlay covers (2,2)
+    expect(hoverFeatureAt([focus], 2, 2, focus)).toBeNull();
+  });
+
+  it('highlights the feature when there is no focus (e.g. the countries band)', () => {
+    expect(hoverFeatureAt([vietnam, haNoi], 2, 2, null)).toBe(vietnam);
+  });
+
+  it('returns null where no feature covers the point', () => {
+    expect(hoverFeatureAt([focus], 2, 8, focus)).toBeNull();
   });
 });
 

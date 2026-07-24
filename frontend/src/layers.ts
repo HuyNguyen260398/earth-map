@@ -20,6 +20,24 @@ export function featureAt(features: Feature[], lat: number, lng: number): Featur
   return features.find((f) => f.geometry && geometryContains(f.geometry, lat, lng)) ?? null;
 }
 
+// Which shape a hover should highlight, resolved — like clicks (see featureAt) —
+// from the pointer's position on the globe surface rather than from raycasting
+// the polygon meshes. The meshes sit a hair above the surface, so at a shallow
+// viewing angle their raycast hit drifts to a neighbouring shape (parallax);
+// picking on the surface, where the imagery lives, keeps the highlight exactly
+// under the cursor. `focus` is the invisible overlay of the drilled-into shape
+// (a country, then a province); it's skipped so hovering the gaps between
+// subdivisions doesn't light up the whole focus shape.
+export function hoverFeatureAt(
+  features: Feature[],
+  lat: number,
+  lng: number,
+  focus: Feature | null,
+): Feature | null {
+  const feature = featureAt(features, lat, lng);
+  return feature && feature !== focus ? feature : null;
+}
+
 export interface PolygonInputs {
   band: ZoomBand;
   countries: FeatureCollection | null;

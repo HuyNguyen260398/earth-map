@@ -2,11 +2,11 @@ import './style.css';
 import type { Feature, FeatureCollection } from 'geojson';
 import { createGlobe, setSatelliteTiles, upgradeTerrainTexture, SATELLITE_ATTRIBUTION } from './globe';
 import { attachInteractions } from './interactions';
-import { buildPolygons, featureAt, featureName, isVietnam } from './layers';
+import { buildPolygons, featureAt, featureName, hoverFeatureAt, isVietnam } from './layers';
 import { buildBorderPaths, buildDissolvedBorderPaths, type BorderPath } from './border';
 import { INITIAL_NAV_STATE, navigate, type NavEvent, type NavState } from './navigation';
 import { boundsAltitude, geometryBounds, geometryCentroid } from './geo';
-import { polygonCapColor, polygonStrokeColor } from './styles';
+import { polygonAltitudeFor, polygonCapColor, polygonStrokeColor } from './styles';
 import {
   COUNTRIES_VIEW_ALTITUDE,
   DETAIL_VIEW_MAX_ALTITUDE,
@@ -89,6 +89,9 @@ if (!webglSupported()) {
       console.error(err);
     }
     applyStyles();
+    // Hug the surface up close so subdivisions and hover stay aligned with the
+    // satellite imagery; keep the higher lift up high to clear z-fighting.
+    globe.polygonAltitude(polygonAltitudeFor(nav.band));
     globe.polygonsData(
       buildPolygons({ band: nav.band, countries, provinces, wards, country: nav.selected, province: nav.province }),
     );
@@ -170,16 +173,30 @@ if (!webglSupported()) {
     const next = navigate(nav, event);
     if (next === nav) return;
     nav = next;
+    // The view is changing, so whatever was under the (stationary) cursor no
+    // longer is; drop the hover until the next pointer move re-resolves it.
+    // Otherwise a shape hovered in the old band lingers — e.g. the country just
+    // clicked into, now the invisible focus overlay, would light up whole.
+    hovered = null;
+    interactions.clearHover();
     if (event.type !== 'zoom') moveCamera(nav, event);
     if (nav.band !== 'globe') upgradeTerrainTexture(globe);
     updateImagery();
     void renderPolygons();
   }
 
-  attachInteractions(globe, {
-    onHover: (feature) => {
-      hovered = feature;
-      applyStyles();
+  const interactions = attachInteractions(globe, {
+    onSurfaceHover: (coords) => {
+      // Resolve the hovered shape from the surface point (like clicks), not from
+      // globe.gl's mesh raycast, so the highlight lands exactly under the cursor.
+      const next = coords
+        ? hoverFeatureAt(globe.polygonsData() as Feature[], coords.lat, coords.lng, focusFeature())
+        : null;
+      if (next !== hovered) {
+        hovered = next;
+        applyStyles();
+      }
+      return hovered;
     },
     onSurfaceClick: ({ lat, lng }) => {
       const feature = featureAt(globe.polygonsData() as Feature[], lat, lng);
