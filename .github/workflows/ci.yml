@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend test and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+
+  edge-function:
+    name: CloudFront function tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - run: node --test 'infra/modules/static-site/functions/*.test.mjs'
+
+  terraform:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.5
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra
+
+      # Module-level plan tests use a mocked provider and need no credentials,
+      # so they run before the role is assumed.
+      - name: Test static-site module
+        working-directory: infra/modules/static-site
+        run: |
+          terraform init -backend=false
+          terraform test
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Init prod
+        working-directory: infra/envs/prod
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.STATE_BUCKET_NAME }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
+
+      - name: Validate prod
+        working-directory: infra/envs/prod
+        run: terraform validate
+
+      # -lock=false keeps the plan role genuinely read-only: writing the
+      # .tflock object needs s3:PutObject, which it deliberately does not have.
+      - name: Plan prod
+        id: plan
+        working-directory: infra/envs/prod
+        run: |
+          terraform plan -input=false -no-color -lock=false \
+            -var="region=${{ vars.AWS_REGION }}" \
+            -var="hosted_zone_id=${{ vars.HOSTED_ZONE_ID }}" \
+            -var="site_bucket_name=${{ vars.SITE_BUCKET_NAME }}" \
+            | tee plan.txt
+
+      # Published to the job summary rather than a PR comment: no
+      # pull-requests: write permission, no third-party action, and it works
+      # identically on workflow_dispatch.
+      - name: Publish plan to job summary
+        if: always()
+        working-directory: infra/envs/prod
+        run: |
+          {
+            echo '## Terraform plan — envs/prod'
+            echo
+            echo '```terraform'
+            tail -c 60000 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
