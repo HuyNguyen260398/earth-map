@@ -51,14 +51,22 @@ jobs:
             -var="hosted_zone_id=${{ vars.HOSTED_ZONE_ID }}" \
             -var="site_bucket_name=${{ vars.SITE_BUCKET_NAME }}"
 
+      # Assign before echoing: with `set -e`, a failed command substitution in
+      # an assignment aborts the step, whereas one inside `echo` would quietly
+      # write an empty value and let the sync run against "s3:///".
       - name: Capture stack outputs
         id: tf
         working-directory: infra/envs/prod
+        shell: bash
         run: |
+          set -euo pipefail
+          site_bucket="$(terraform output -raw site_bucket_name)"
+          distribution_id="$(terraform output -raw distribution_id)"
+          site_url="$(terraform output -raw site_url)"
           {
-            echo "site_bucket=$(terraform output -raw site_bucket_name)"
-            echo "distribution_id=$(terraform output -raw distribution_id)"
-            echo "site_url=$(terraform output -raw site_url)"
+            echo "site_bucket=$site_bucket"
+            echo "distribution_id=$distribution_id"
+            echo "site_url=$site_url"
           } >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
