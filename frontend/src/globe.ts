@@ -76,6 +76,39 @@ export function createGlobe(container: HTMLElement): GlobeInstance {
   return globe;
 }
 
+// --- Earth rotation -------------------------------------------------------
+//
+// The Earth spins once per *sidereal* day — one turn relative to the stars,
+// which is 23h56m04s (86164 s), not the 86400 s solar day (that extra ~4 min
+// is the planet catching up with its own orbital motion around the Sun). At
+// real speed that's ~0.0042°/s: technically correct but motionless to the eye.
+// So we keep the exact sidereal ratio and the real west-to-east direction, and
+// only fast-forward time by TIME_SCALE to make the spin visible.
+const SIDEREAL_DAY_SECONDS = 86164;
+// Target one visible turn every ~120 s, i.e. run the clock ~718× real time.
+const ROTATION_PERIOD_SECONDS = 120;
+const TIME_SCALE = SIDEREAL_DAY_SECONDS / ROTATION_PERIOD_SECONDS;
+
+// OrbitControls' autoRotate orbits the camera about the controls' up axis,
+// which in globe.gl is +Y — the globe's polar axis. So this is a true rotation
+// about the geographic poles, independent of where the camera has been dragged.
+// autoRotateSpeed is calibrated as "60 / seconds-per-turn". A positive speed
+// steps the camera's azimuth backwards, drifting the sub-camera meridian
+// westward, which reads on screen as the surface flowing west→east — the way
+// Earth actually turns (verified on screen against the longitude mapping).
+const EASTWARD = 1;
+const AUTO_ROTATE_SPEED = EASTWARD * (60 / ROTATION_PERIOD_SECONDS);
+
+// The real-time multiplier this animation runs at — surfaced for callers/docs.
+export const ROTATION_TIME_SCALE = TIME_SCALE;
+
+// Start/stop the globe's rotation about its polar axis.
+export function setEarthRotation(globe: GlobeInstance, on: boolean): void {
+  const controls = globe.controls();
+  controls.autoRotateSpeed = AUTO_ROTATE_SPEED;
+  controls.autoRotate = on;
+}
+
 let upgraded = false;
 
 // Swaps in the 8k earth. It's ~4.7 MB, so it only gets fetched once the user

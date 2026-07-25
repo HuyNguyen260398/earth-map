@@ -1,6 +1,6 @@
 import './style.css';
 import type { Feature, FeatureCollection } from 'geojson';
-import { createGlobe, setSatelliteTiles, upgradeTerrainTexture, SATELLITE_ATTRIBUTION } from './globe';
+import { createGlobe, setEarthRotation, setSatelliteTiles, upgradeTerrainTexture, SATELLITE_ATTRIBUTION } from './globe';
 import { attachInteractions } from './interactions';
 import { buildPolygons, featureAt, featureName, hoverFeatureAt, isVietnam } from './layers';
 import { buildBorderPaths, buildDissolvedBorderPaths, type BorderPath } from './border';
@@ -62,6 +62,7 @@ if (!webglSupported()) {
   // Camera flights pass through altitudes belonging to other bands; treating
   // those as user zooming would yank the band back mid-flight.
   let flyingUntil = 0;
+  let rotationTimer = 0;
 
   // The subdivided shape in focus: a province at the ward band, a country above.
   function focusFeature(): Feature | null {
@@ -169,6 +170,20 @@ if (!webglSupported()) {
     attribution.hidden = !on;
   }
 
+  // The Earth turns only in the far globe view — drilling into a country would
+  // otherwise spin the target out of frame. When zooming back out, let the
+  // fly-out finish before the spin takes over so it doesn't fight the camera
+  // tween for a second.
+  function updateRotation(): void {
+    window.clearTimeout(rotationTimer);
+    if (nav.band !== 'globe') {
+      setEarthRotation(globe, false);
+      return;
+    }
+    const wait = Math.max(0, flyingUntil - performance.now());
+    rotationTimer = window.setTimeout(() => setEarthRotation(globe, true), wait);
+  }
+
   function dispatch(event: NavEvent): void {
     const next = navigate(nav, event);
     if (next === nav) return;
@@ -182,6 +197,7 @@ if (!webglSupported()) {
     if (event.type !== 'zoom') moveCamera(nav, event);
     if (nav.band !== 'globe') upgradeTerrainTexture(globe);
     updateImagery();
+    updateRotation();
     void renderPolygons();
   }
 
@@ -209,6 +225,9 @@ if (!webglSupported()) {
     if (performance.now() < flyingUntil) return;
     dispatch({ type: 'zoom', altitude });
   });
+
+  // Kick off the spin for the initial far view (dispatch only runs on nav).
+  updateRotation();
 
   if (import.meta.env.DEV) {
     (window as unknown as { __globe: unknown; __nav: unknown }).__globe = globe;
