@@ -36,3 +36,15 @@ variable "github_repo" {
   type        = string
   default     = "earth-map"
 }
+
+variable "github_owner_id" {
+  description = "Numeric GitHub account ID. Set together with github_repo_id when the repository issues the immutable OIDC subject claim. Find both with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub"
+  type        = number
+  default     = null
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub repository ID. See github_owner_id."
+  type        = number
+  default     = null
+}
