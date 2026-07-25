@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend test and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+
+  edge-function:
+    name: CloudFront function tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - run: node --test 'infra/modules/static-site/functions/*.test.mjs'
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.5
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra
+
+      # Module-level plan tests use a mocked provider, so they need no
+      # credentials and run on every PR.
+      - name: Test static-site module
+        working-directory: infra/modules/static-site
+        run: |
+          terraform init -backend=false
+          terraform test
+
+      # Also credential-free. Catches configuration errors on every PR,
+      # including before the AWS account has been bootstrapped.
+      - name: Validate prod
+        working-directory: infra/envs/prod
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      # Everything below needs a bootstrapped account. Until the repository
+      # variables and the plan role exist, skip rather than fail: the checks
+      # above still gate the PR, and a missing aws-region would otherwise make
+      # every pull request red for a reason that is not the PR's fault.
+      - name: Check deployment configuration
+        id: config
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          STATE_BUCKET_NAME: ${{ vars.STATE_BUCKET_NAME }}
+          PLAN_ROLE_ARN: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+        run: |
+          if [ -n "$AWS_REGION" ] && [ -n "$STATE_BUCKET_NAME" ] && [ -n "$PLAN_ROLE_ARN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping terraform plan — run infra/bootstrap, then set the AWS_REGION, STATE_BUCKET_NAME, SITE_BUCKET_NAME and HOSTED_ZONE_ID variables and the AWS_PLAN_ROLE_ARN secret. See README 'Deployment'."
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: steps.config.outputs.ready == 'true'
+        with:
+          role-to-assume: ${{ secrets.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # -reconfigure because the validate step above already initialised this
+      # directory with -backend=false.
+      - name: Init prod with remote state
+        if: steps.config.outputs.ready == 'true'
+        working-directory: infra/envs/prod
+        run: |
+          terraform init -input=false -reconfigure \
+            -backend-config="bucket=${{ vars.STATE_BUCKET_NAME }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
+
+      # -lock=false keeps the plan role genuinely read-only: writing the
+      # .tflock object needs s3:PutObject, which it deliberately does not have.
+      - name: Plan prod
+        if: steps.config.outputs.ready == 'true'
+        working-directory: infra/envs/prod
+        # `shell: bash` runs with -o pipefail. Without it the step's exit status
+        # would be tee's, and a failing plan would be reported as success.
+        shell: bash
+        run: |
+          terraform plan -input=false -no-color -lock=false \
+            -var="region=${{ vars.AWS_REGION }}" \
+            -var="hosted_zone_id=${{ vars.HOSTED_ZONE_ID }}" \
+            -var="site_bucket_name=${{ vars.SITE_BUCKET_NAME }}" \
+            | tee plan.txt
+
+      # Published to the job summary rather than a PR comment: no
+      # pull-requests: write permission, no third-party action, and it works
+      # identically on workflow_dispatch.
+      - name: Publish plan to job summary
+        if: always() && steps.config.outputs.ready == 'true'
+        working-directory: infra/envs/prod
+        run: |
+          {
+            echo '## Terraform plan — envs/prod'
+            echo
+            if [ -s plan.txt ]; then
+              echo '```terraform'
+              tail -c 60000 plan.txt
+              echo '```'
+            else
+              echo '_The plan produced no output — see the job log for the failure._'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
