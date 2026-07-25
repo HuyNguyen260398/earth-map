@@ -83,7 +83,9 @@ earth-map/
 │   ├── public/data/   # countries, Vietnam provinces, per-province wards (GeoJSON)
 │   ├── public/textures/
 │   └── scripts/       # one-off data preparation pipelines
-└── docs/              # design spec and implementation plan
+├── infra/             # Terraform — bootstrap, reusable modules, prod environment
+├── .github/           # CI (pull requests) and deploy (main) workflows
+└── docs/              # design spec, implementation plans, deployment architecture
 ```
 
 `frontend/README.md` documents each source module and what it owns.
@@ -106,8 +108,144 @@ regeneration pipelines are documented next to them:
 > provider (Mapbox Satellite, etc.) is a one-line change in
 > `frontend/src/globe.ts` — mind that provider's terms and attribution too.
 
+## Deployment
+
+The app is served from `https://earthmap.nghuy.link` — a private S3 bucket
+behind CloudFront, defined in Terraform and shipped by GitHub Actions. See
+[`docs/architecture.md`](docs/architecture.md) for the full picture.
+
+> [!WARNING]
+> Deploying creates real, billable AWS resources (CloudFront, S3, Route 53
+> queries). Traffic to a personal site keeps this to a few dollars a month, but
+> it is not free. See [Tear down](#tear-down) below.
+
+### Prerequisites
+
+| Tool | Version |
+|---|---|
+| Terraform | >= 1.11 (for S3-native state locking) |
+| AWS CLI | v2, authenticated to the target account |
+| Node.js | 22.x |
+| pnpm | 11.x |
+| GitHub CLI | optional, for the `gh` commands below |
+
+You also need a Route 53 hosted zone for the parent domain and permission to
+create S3 buckets, CloudFront distributions, ACM certificates and IAM roles.
+
+### 1. Bootstrap (once)
+
+Creates the Terraform state bucket and the two OIDC-trusted CI roles. This step
+uses local state — it is the chicken-and-egg that everything else stands on.
+There is no lock table: `infra/envs/prod` locks with an S3 object
+(`use_lockfile`), so the state bucket is the whole backend.
+
+```sh
+cd infra/bootstrap
+cp terraform.tfvars.example terraform.tfvars   # edit the values
+terraform init
+terraform apply
+```
+
+The account's GitHub OIDC provider is referenced, not created — if the account
+does not have one yet, create it first:
+
+```sh
+aws iam create-open-id-connect-provider \
+  --url "https://token.actions.githubusercontent.com" \
+  --client-id-list "sts.amazonaws.com"
+```
+
+Note the three outputs; they become the GitHub configuration in the next step.
+
+### 2. Configure the GitHub repository
+
+**Variables:**
+
+| Name | Value |
+|---|---|
+| `AWS_REGION` | `ap-southeast-1` |
+| `STATE_BUCKET_NAME` | `terraform output state_bucket_name` |
+| `SITE_BUCKET_NAME` | the `site_bucket_name` you set in `terraform.tfvars` |
+| `HOSTED_ZONE_ID` | the hosted zone ID for the parent domain |
+
+**Secrets:**
+
+| Name | Value |
+|---|---|
+| `AWS_PLAN_ROLE_ARN` | `terraform output plan_role_arn` |
+| `AWS_DEPLOY_ROLE_ARN` | `terraform output deploy_role_arn` |
+
+```sh
+gh variable set AWS_REGION --body "ap-southeast-1"
+gh variable set STATE_BUCKET_NAME --body "<state bucket>"
+gh variable set SITE_BUCKET_NAME --body "<site bucket>"
+gh variable set HOSTED_ZONE_ID --body "<zone id>"
+gh secret set AWS_PLAN_ROLE_ARN --body "<plan role arn>"
+gh secret set AWS_DEPLOY_ROLE_ARN --body "<deploy role arn>"
+```
+
+> [!IMPORTANT]
+> `deploy.yml` triggers on pushes to `main`, and the CI roles' OIDC trust
+> policies are scoped to `refs/heads/main` and `pull_request`. Make sure `main`
+> is the repository's default branch (`gh repo edit --default-branch main`).
+
+### 3. First deploy
+
+Push to `main`. `deploy.yml` applies the stack, builds the frontend, syncs it
+to S3 and invalidates the cache. The first apply waits on ACM DNS validation,
+which usually takes a few minutes, and on the CloudFront distribution
+deploying, which can take up to fifteen.
+
+Verify once it finishes:
+
+```sh
+curl -sI https://earthmap.nghuy.link | grep -Ei 'HTTP/|strict-transport|content-security'
+curl -sI -H 'Accept-Encoding: gzip' https://earthmap.nghuy.link/data/countries.geojson | grep -i content-encoding
+```
+
+Expected: `HTTP/2 200`, an HSTS header, a CSP header, and `content-encoding: gzip`
+on the GeoJSON. Then open the site and confirm the browser console reports no
+CSP violations — if it does, adjust `content_security_policy` in
+`infra/modules/static-site/variables.tf`.
+
+### Local plan
+
+```sh
+cd infra/envs/prod
+cp terraform.tfvars.example terraform.tfvars   # edit the values
+terraform init \
+  -backend-config="bucket=<state bucket>" \
+  -backend-config="region=<region>"
+terraform plan
+```
+
+### Tear down
+
+The site bucket has no `force_destroy`, so empty it first.
+
+```sh
+aws s3 rm "s3://<site bucket>" --recursive
+cd infra/envs/prod && terraform destroy
+```
+
+Then, only when you are finished entirely, remove the state bucket and CI
+roles. The bucket is versioned, so delete every object version and delete
+marker before destroying it:
+
+```sh
+aws s3api delete-objects --bucket <state bucket> --delete "$(
+  aws s3api list-object-versions --bucket <state bucket> \
+    --output json --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}')"
+aws s3api delete-objects --bucket <state bucket> --delete "$(
+  aws s3api list-object-versions --bucket <state bucket> \
+    --output json --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}')"
+cd infra/bootstrap && terraform destroy
+```
+
 ## Documentation
 
+- [Deployment architecture](docs/architecture.md) — the AWS stack, request path,
+  caching rules and CI/CD pipeline.
 - [Design spec](docs/superpowers/specs/2026-07-22-earth-globe-design.md) — what the
   app is meant to do and why.
 - [Implementation plan](docs/superpowers/plans/2026-07-22-globe-frontend.md) — how
