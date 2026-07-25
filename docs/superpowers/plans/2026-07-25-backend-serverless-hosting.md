@@ -485,7 +485,7 @@ test('returns the same request object it was given', () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 ```bash
-node --test infra/modules/static-site/functions/
+node --test 'infra/modules/static-site/functions/*.test.mjs'
 ```
 
 Expected: FAIL — `ENOENT: no such file or directory, open '.../rewrite-uri.js'`.
@@ -520,7 +520,7 @@ function handler(event) {
 - [ ] **Step 4: Run the test to verify it passes**
 
 ```bash
-node --test infra/modules/static-site/functions/
+node --test 'infra/modules/static-site/functions/*.test.mjs'
 ```
 
 Expected: PASS — `# pass 8`, `# fail 0`.
@@ -1015,7 +1015,7 @@ terraform -chdir=infra/modules/static-site init -backend=false
 terraform fmt -check -recursive infra
 terraform -chdir=infra/modules/static-site validate
 terraform -chdir=infra/modules/static-site test
-node --test infra/modules/static-site/functions/
+node --test 'infra/modules/static-site/functions/*.test.mjs'
 ```
 
 Expected: `validate` prints `Success!`; `test` prints `2 passed, 0 failed`; `node --test` still prints `# fail 0`.
@@ -1301,7 +1301,7 @@ jobs:
         with:
           node-version: 22
 
-      - run: node --test infra/modules/static-site/functions/
+      - run: node --test 'infra/modules/static-site/functions/*.test.mjs'
 
   terraform:
     name: Terraform plan
@@ -1854,7 +1854,7 @@ Expected: `docs consistent`
 
 ```bash
 terraform fmt -check -recursive infra
-node --test infra/modules/static-site/functions/
+node --test 'infra/modules/static-site/functions/*.test.mjs'
 terraform -chdir=infra/modules/static-site test
 terraform -chdir=infra/envs/prod validate
 (cd frontend && pnpm test && pnpm build)
