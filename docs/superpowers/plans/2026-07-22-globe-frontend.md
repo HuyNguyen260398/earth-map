@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Node.js 20.x, pnpm 9.x.
+- Node.js 20.x or newer, pnpm 9.x or newer. (Executed against Node 26.5.0 / pnpm 11.15.1, which scaffolds Vite 8 + TypeScript 6 + Vitest 4.)
 - No UI framework (no React/Next) — vanilla TypeScript only.
 - All assets (textures, GeoJSON) served from the app's own origin; no CDN URLs at runtime.
 - `vietnam-34-provinces.geojson` must contain exactly **34** features; provenance and attribution recorded in `frontend/public/data/README.md` (source: https://github.com/nguyenduy1133/Free-GIS-Data, attribution "Nguyen Duy Liem").
@@ -31,13 +31,13 @@
 - Create: `frontend/` (via Vite scaffold: `package.json`, `tsconfig.json`, `index.html`, `src/`, `.gitignore`)
 - Create: `frontend/src/style.css` (replace template content)
 - Modify: `frontend/index.html`, `frontend/package.json`
-- Delete: `frontend/src/counter.ts`, `frontend/src/typescript.svg`, `frontend/public/vite.svg`
+- Delete: `frontend/src/counter.ts`, `frontend/src/assets/`, `frontend/public/favicon.svg`, `frontend/public/icons.svg` (exact leftovers vary by Vite template version — list `src/` and `public/` first)
 
 **Interfaces:**
 - Consumes: nothing (first task).
 - Produces: a building, testable app shell. `index.html` contains `<div id="app"></div>`; `pnpm dev`, `pnpm build`, `pnpm test` all work. Later tasks put source in `frontend/src/` and assets in `frontend/public/`.
 
-- [ ] **Step 1: Scaffold the project**
+- [x] **Step 1: Scaffold the project**
 
 ```bash
 cd /Users/huyng/ws/earth-map
@@ -48,7 +48,7 @@ pnpm add globe.gl
 pnpm add -D vitest @types/geojson
 ```
 
-- [ ] **Step 2: Replace the template shell**
+- [x] **Step 2: Replace the template shell**
 
 Replace `frontend/index.html` with:
 
@@ -112,10 +112,10 @@ document.querySelector<HTMLDivElement>('#app')!.textContent = 'Earth Map';
 Delete the template leftovers:
 
 ```bash
-rm frontend/src/counter.ts frontend/src/typescript.svg frontend/public/vite.svg
+rm -rf frontend/src/counter.ts frontend/src/assets frontend/public/favicon.svg frontend/public/icons.svg
 ```
 
-- [ ] **Step 3: Add the test script**
+- [x] **Step 3: Add the test script**
 
 In `frontend/package.json`, add to `"scripts"`:
 
@@ -123,7 +123,7 @@ In `frontend/package.json`, add to `"scripts"`:
 "test": "vitest run"
 ```
 
-- [ ] **Step 4: Verify dev server, build, and test runner**
+- [x] **Step 4: Verify dev server, build, and test runner**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -135,7 +135,7 @@ If `pnpm test` fails on "no test files", change the script to `"test": "vitest r
 
 Then run `pnpm dev`, open http://localhost:5173, and confirm a black page showing "Earth Map". Stop the server.
 
-- [ ] **Step 5: Commit (task done)**
+- [x] **Step 5: Commit (task done)**
 
 Mark all Task 1 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
@@ -160,7 +160,7 @@ git commit -m "feat: scaffold Vite + TypeScript frontend shell"
 - Consumes: nothing.
 - Produces: static asset paths used by later tasks — `/textures/earth-blue-marble.jpg`, `/textures/earth-topology.png`, `/textures/night-sky.png`, `/data/countries.geojson` (Natural Earth 110m; features carry `properties.ADMIN`, `properties.ISO_A3`), `/data/vietnam-34-provinces.geojson` (34 features; `properties = { name, level: 'province' }`).
 
-- [ ] **Step 1: Download globe textures**
+- [x] **Step 1: Download globe textures**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -171,7 +171,7 @@ curl -fL -o public/textures/night-sky.png        https://unpkg.com/three-globe/e
 ls -la public/textures   # Expected: three non-empty files
 ```
 
-- [ ] **Step 2: Download world countries GeoJSON (Natural Earth 110m)**
+- [x] **Step 2: Download world countries GeoJSON (Natural Earth 110m)**
 
 ```bash
 curl -fL -o public/data/countries.geojson \
@@ -197,7 +197,7 @@ console.log('features:', fc.features.length, '| vietnam:', vn && vn.properties.A
 
 Expected: `features: 177 | vietnam: Vietnam` (feature count may vary slightly by dataset version; `vietnam: Vietnam` must appear).
 
-- [ ] **Step 3: Clone the Vietnam provinces source and locate the file**
+- [x] **Step 3: Clone the Vietnam provinces source and locate the file**
 
 ```bash
 CLONE_DIR=$(mktemp -d)
@@ -206,14 +206,14 @@ SRC=$(find "$CLONE_DIR/Free-GIS-Data" -name "Provinces.geojson" -path "*Post-202
 echo "$SRC"   # Expected: a path inside the "Vietnam Administrative Divisions (Post-2025)..." directory
 ```
 
-- [ ] **Step 4: Simplify with mapshaper to a reasonable size**
+- [x] **Step 4: Simplify with mapshaper to a reasonable size**
 
 ```bash
 npx -y mapshaper "$SRC" -simplify 8% keep-shapes -o precision=0.0001 format=geojson public/data/provinces-raw.geojson
 ls -la public/data/provinces-raw.geojson   # Expected: well under 3 MB; if larger, re-run with -simplify 4%
 ```
 
-- [ ] **Step 5: Inspect the source property names**
+- [x] **Step 5: Inspect the source property names**
 
 ```bash
 node -e "
@@ -225,7 +225,16 @@ console.log('properties of first feature:', fc.features[0].properties);
 
 Expected: `features: 34` and a properties object containing the province name under some key (likely Vietnamese, e.g. `ten_tinh`, `TenTinh`, or `Name`). Note the exact key holding the Vietnamese province name — it is the `<NAME_KEY>` argument in the next step.
 
-- [ ] **Step 6: Write and run the normalization script**
+- [x] **Step 6: Write and run the normalization script**
+
+> **Executed note:** the source name key is `TinhThanh`, and the upstream file
+> has a data bug — it labels the Mekong Delta unit as a second "Lạng Sơn",
+> leaving `Đồng Tháp` missing. The delivered script therefore also applies a
+> latitude-keyed correction (a "Lạng Sơn" centred below 15°N is `Đồng Tháp`)
+> and validates the output against the official 34-unit name list, exiting
+> non-zero on duplicates, missing, or unexpected units. See
+> `frontend/public/data/README.md`. The skeleton below is the pre-correction
+> version; the committed script is the authority.
 
 Create `frontend/scripts/prepare-provinces.mjs`:
 
@@ -262,7 +271,7 @@ rm public/data/provinces-raw.geojson
 
 Expected: `Wrote 34 features to public/data/vietnam-34-provinces.geojson` followed by 34 Vietnamese province/city names (e.g. Hà Nội, Thành phố Hồ Chí Minh, Đà Nẵng, …).
 
-- [ ] **Step 7: Record provenance**
+- [x] **Step 7: Record provenance**
 
 Create `frontend/public/data/README.md`:
 
@@ -286,7 +295,7 @@ Create `frontend/public/data/README.md`:
   `{ name, level: 'province' }` by `frontend/scripts/prepare-provinces.mjs`.
 ```
 
-- [ ] **Step 8: Commit (task done)**
+- [x] **Step 8: Commit (task done)**
 
 Mark all Task 2 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
@@ -308,7 +317,7 @@ git commit -m "feat: add globe textures and countries/Vietnam-provinces GeoJSON 
 - Consumes: nothing.
 - Produces: `type ZoomBand = 'globe' | 'countries' | 'detail'` and `nextBand(current: ZoomBand, altitude: number): ZoomBand`. Exported threshold constants `COUNTRIES_ENTER = 1.8`, `COUNTRIES_EXIT = 2.0`, `DETAIL_ENTER = 0.6`, `DETAIL_EXIT = 0.75`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `frontend/src/zoomLevels.test.ts`:
 
@@ -352,7 +361,7 @@ describe('nextBand', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -361,7 +370,7 @@ pnpm test
 
 Expected: FAIL — `Cannot find module './zoomLevels'` (or equivalent resolution error).
 
-- [ ] **Step 3: Implement `zoomLevels.ts`**
+- [x] **Step 3: Implement `zoomLevels.ts`**
 
 Create `frontend/src/zoomLevels.ts`:
 
@@ -393,7 +402,7 @@ export function nextBand(current: ZoomBand, altitude: number): ZoomBand {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm test
@@ -401,7 +410,7 @@ pnpm test
 
 Expected: PASS — 6 tests passing.
 
-- [ ] **Step 5: Commit (task done)**
+- [x] **Step 5: Commit (task done)**
 
 Mark all Task 3 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
@@ -423,7 +432,7 @@ git commit -m "feat: add zoom band classification with hysteresis"
 - Consumes: `ZoomBand` from `./zoomLevels` (Task 3).
 - Produces: `VIETNAM_ISO_A3 = 'VNM'`; `featureName(f: Feature): string`; `buildPolygons(band: ZoomBand, countries: FeatureCollection | null, provinces: FeatureCollection | null): Feature[]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `frontend/src/layers.test.ts`:
 
@@ -492,7 +501,7 @@ describe('featureName', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -501,7 +510,7 @@ pnpm test
 
 Expected: FAIL — `Cannot find module './layers'`.
 
-- [ ] **Step 3: Implement `layers.ts`**
+- [x] **Step 3: Implement `layers.ts`**
 
 Create `frontend/src/layers.ts`:
 
@@ -530,7 +539,7 @@ export function buildPolygons(
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm test
@@ -538,7 +547,7 @@ pnpm test
 
 Expected: PASS — all zoomLevels + layers tests passing (14 total).
 
-- [ ] **Step 5: Commit (task done)**
+- [x] **Step 5: Commit (task done)**
 
 Mark all Task 4 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
@@ -552,6 +561,25 @@ git commit -m "feat: add zoom-band polygon dataset selection"
 
 ### Task 5: Globe rendering and zoom-band wiring (`globe.ts`, `data.ts`, `main.ts`)
 
+> **Executed notes:**
+> - Verification found the globe rendering as a flat blue sheet at the detail
+>   band. Root cause was **not** the app code: the province GeoJSON had
+>   counter-clockwise outer rings, while three-globe triangulates caps assuming
+>   the clockwise winding of its Natural Earth countries data. Every province
+>   cap inverted into screen-covering triangle fans. Fixed in
+>   `scripts/prepare-provinces.mjs` (`rewind`), and the data was regenerated —
+>   see `frontend/public/data/README.md`.
+> - The provinces were also re-simplified from 8% to **1%** (~126 points per
+>   feature, ~75 KB), matching Natural Earth's density; at 8% the 846-point
+>   features made cap tessellation pathologically slow.
+> - `main.ts` additionally exposes the globe as `window.__globe` under
+>   `import.meta.env.DEV` only. This was what made the winding bug diagnosable
+>   (reading real camera altitude and swapping datasets live); it is stripped
+>   from production builds.
+> - globe.gl already clamps `controls.minDistance` to just above the surface, so
+>   no custom zoom floor is needed.
+
+
 **Files:**
 - Create: `frontend/src/globe.ts`
 - Create: `frontend/src/data.ts`
@@ -561,7 +589,7 @@ git commit -m "feat: add zoom-band polygon dataset selection"
 - Consumes: `nextBand`, `ZoomBand` (Task 3); `buildPolygons` (Task 4); assets from Task 2.
 - Produces: `createGlobe(container: HTMLElement): GlobeInstance` (base styling only — no hover/click; Task 6 layers interactions on top); `loadCountries(): Promise<FeatureCollection>`; `loadProvinces(): Promise<FeatureCollection>`. `main.ts` owns band state and the `refreshPolygons()` loop.
 
-- [ ] **Step 1: Implement `globe.ts`**
+- [x] **Step 1: Implement `globe.ts`**
 
 Create `frontend/src/globe.ts`:
 
@@ -584,7 +612,7 @@ export function createGlobe(container: HTMLElement): GlobeInstance {
 
 Note: globe.gl ≥ 2.32 supports `new Globe(element)`. If TypeScript rejects the constructor call, use the factory form `Globe()(container)` — same instance either way.
 
-- [ ] **Step 2: Implement `data.ts`**
+- [x] **Step 2: Implement `data.ts`**
 
 Create `frontend/src/data.ts`:
 
@@ -619,7 +647,7 @@ export function loadProvinces(): Promise<FeatureCollection> {
 }
 ```
 
-- [ ] **Step 3: Wire it together in `main.ts`**
+- [x] **Step 3: Wire it together in `main.ts`**
 
 Replace `frontend/src/main.ts` entirely with:
 
@@ -679,7 +707,7 @@ if (!webglSupported()) {
 }
 ```
 
-- [ ] **Step 4: Verify types, tests, and build**
+- [x] **Step 4: Verify types, tests, and build**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -687,7 +715,7 @@ pnpm test    # Expected: PASS (14 tests, unchanged)
 pnpm build   # Expected: tsc + vite build succeed
 ```
 
-- [ ] **Step 5: Verify manually in the dev server**
+- [x] **Step 5: Verify manually in the dev server**
 
 Run `pnpm dev`, open http://localhost:5173, and check:
 
@@ -699,7 +727,7 @@ Run `pnpm dev`, open http://localhost:5173, and check:
 
 Stop the server.
 
-- [ ] **Step 6: Commit (task done)**
+- [x] **Step 6: Commit (task done)**
 
 Mark all Task 5 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
@@ -713,6 +741,16 @@ git commit -m "feat: render textured globe with altitude-driven polygon bands"
 
 ### Task 6: Hover and click interactions (`geo.ts`, `interactions.ts`) — TDD for geometry
 
+> **Executed note:** browser automation's synthetic click does not fire
+> `onPolygonClick`. three-render-objects detects clicks on `pointerup` and only
+> when a matching `pointerdown` set `isPointerPressed`, which the harness's
+> click does not produce — an automation artifact, not an app bug. Verified
+> instead by dispatching a real `pointermove`/`pointerdown`/`pointerup`
+> sequence: the camera flew to the clicked country's centroid at
+> `FLY_ALTITUDE` (0.5) and the band switched to detail (210 polygons, 34
+> provinces). Hover highlight and name tooltips were confirmed visually.
+
+
 **Files:**
 - Create: `frontend/src/geo.ts`
 - Test: `frontend/src/geo.test.ts`
@@ -723,7 +761,7 @@ git commit -m "feat: render textured globe with altitude-driven polygon bands"
 - Consumes: `featureName` (Task 4); `GlobeInstance` created by Task 5's `createGlobe`.
 - Produces: `geometryCentroid(geometry: Geometry): { lat: number; lng: number }` (bbox center); `attachInteractions(globe: GlobeInstance): void`; `FLY_ALTITUDE = 0.5`.
 
-- [ ] **Step 1: Write the failing tests for the centroid helper**
+- [x] **Step 1: Write the failing tests for the centroid helper**
 
 Create `frontend/src/geo.test.ts`:
 
@@ -754,7 +792,7 @@ describe('geometryCentroid', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -763,7 +801,7 @@ pnpm test
 
 Expected: FAIL — `Cannot find module './geo'`.
 
-- [ ] **Step 3: Implement `geo.ts`**
+- [x] **Step 3: Implement `geo.ts`**
 
 Create `frontend/src/geo.ts`:
 
@@ -792,7 +830,7 @@ export function geometryCentroid(geometry: Geometry): { lat: number; lng: number
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pnpm test
@@ -800,7 +838,7 @@ pnpm test
 
 Expected: PASS — 16 tests.
 
-- [ ] **Step 5: Implement `interactions.ts`**
+- [x] **Step 5: Implement `interactions.ts`**
 
 Create `frontend/src/interactions.ts`:
 
@@ -837,7 +875,7 @@ export function attachInteractions(globe: GlobeInstance): void {
 }
 ```
 
-- [ ] **Step 6: Attach interactions in `main.ts`**
+- [x] **Step 6: Attach interactions in `main.ts`**
 
 In `frontend/src/main.ts`, add the import:
 
@@ -851,7 +889,7 @@ and immediately after `const globe = createGlobe(app);` add:
 attachInteractions(globe);
 ```
 
-- [ ] **Step 7: Verify types, tests, and build**
+- [x] **Step 7: Verify types, tests, and build**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -859,7 +897,7 @@ pnpm test    # Expected: PASS (16 tests)
 pnpm build   # Expected: succeeds
 ```
 
-- [ ] **Step 8: Verify manually in the dev server**
+- [x] **Step 8: Verify manually in the dev server**
 
 Run `pnpm dev`, open http://localhost:5173, and check:
 
@@ -870,7 +908,7 @@ Run `pnpm dev`, open http://localhost:5173, and check:
 
 Stop the server.
 
-- [ ] **Step 9: Commit (task done)**
+- [x] **Step 9: Commit (task done)**
 
 Mark all Task 6 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 
@@ -891,7 +929,7 @@ git commit -m "feat: add hover highlight, name tooltips, and click-to-fly"
 - Consumes: everything above.
 - Produces: a verified, documented phase-1 frontend; the starting point for the phase-2 (AWS) plan.
 
-- [ ] **Step 1: Run the full verification suite**
+- [x] **Step 1: Run the full verification suite**
 
 ```bash
 cd /Users/huyng/ws/earth-map/frontend
@@ -902,7 +940,7 @@ pnpm preview   # Serves the production build
 
 Open the preview URL and repeat the manual checks from Task 5 Step 5 and Task 6 Step 8 against the **production build** (this catches asset-path issues that `pnpm dev` hides). Stop the server.
 
-- [ ] **Step 2: Write `frontend/README.md`**
+- [x] **Step 2: Write `frontend/README.md`**
 
 ```markdown
 # Earth Map — Frontend
@@ -935,7 +973,7 @@ Static GeoJSON and texture assets live in `public/`; see
 `public/data/README.md` for sources, licenses, and processing steps.
 ```
 
-- [ ] **Step 3: Commit (task done)**
+- [x] **Step 3: Commit (task done)**
 
 Mark all Task 7 steps `- [x]` in `docs/superpowers/plans/2026-07-22-globe-frontend.md`, then:
 

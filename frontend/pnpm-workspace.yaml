@@ -1,0 +1,6 @@
+# mapshaper (dev-only, for scripts/prepare-wards.mjs) pulls these optional
+# native deps. The CLI we use doesn't need them, so their build scripts stay
+# unbuilt rather than prompting on every install.
+allowBuilds:
+  better-sqlite3: false
+  msgpackr-extract: false

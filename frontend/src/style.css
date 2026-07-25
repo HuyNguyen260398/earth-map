@@ -1,0 +1,71 @@
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+.fallback {
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  padding-top: 40vh;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(200, 40, 40, 0.9);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  z-index: 10;
+}
+
+/* Imagery credit, shown only while satellite tiles are on screen. */
+.attribution {
+  position: fixed;
+  bottom: 6px;
+  right: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.45);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.attribution[hidden] {
+  display: none;
+}
+
+/* Name of the shape under the cursor. Follows the pointer; positioned in JS
+   (see interactions.ts) from the same surface hit-test that drives the
+   highlight, so the label and the highlighted shape always agree. */
+.hover-label {
+  position: fixed;
+  transform: translate(-50%, 21px);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 10;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.hover-label[hidden] {
+  display: none;
+}
