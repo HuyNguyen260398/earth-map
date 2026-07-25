@@ -1,12 +1,28 @@
+<div align="center">
+
 # Earth Map
 
 **[earthmap.nghuy.link](https://earthmap.nghuy.link)**
 
+[![CI](https://github.com/HuyNguyen260398/earth-map/actions/workflows/ci.yml/badge.svg)](https://github.com/HuyNguyen260398/earth-map/actions/workflows/ci.yml)
+[![Deploy](https://github.com/HuyNguyen260398/earth-map/actions/workflows/deploy.yml/badge.svg)](https://github.com/HuyNguyen260398/earth-map/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
+
+[![Three.js](https://img.shields.io/badge/three.js-r185-000000?logo=threedotjs&logoColor=white)](https://threejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-8.1-646CFF?logo=vite&logoColor=white)](https://vite.dev)
+[![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.11-7B42BC?logo=terraform&logoColor=white)](https://developer.hashicorp.com/terraform)
+[![AWS](https://img.shields.io/badge/AWS-S3%20%C2%B7%20CloudFront-FF9900?logo=amazonwebservices&logoColor=white)](https://aws.amazon.com)
+
 An interactive 3D earth globe you navigate **by clicking**, not by hunting for the
-right zoom level. Start on a textured NASA Blue Marble sphere, click to dive into
-world borders, click a country to focus it, then keep drilling — for Vietnam, all
-the way down to its 34 post-2025-reform provinces and their 3,321 wards, over
-streamed satellite imagery.
+right zoom level.
+
+</div>
+
+Start on a textured NASA Blue Marble sphere, click to dive into world borders,
+click a country to focus it, then keep drilling — for Vietnam, all the way down
+to its 34 post-2025-reform provinces and their 3,321 wards, over streamed
+satellite imagery.
 
 There is no API, no database and no sign-in. Every byte the app needs is a static
 asset, so the whole thing is delivered straight from a CDN.
