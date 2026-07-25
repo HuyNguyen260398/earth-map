@@ -26,6 +26,29 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # An unconfigured repository otherwise fails in the step below with a
+      # bare "Input required and not supplied: aws-region", which says nothing
+      # about the cause. Deliberately fails rather than skipping: a deploy that
+      # silently no-ops would leave the site stale with no signal.
+      - name: Verify deployment configuration
+        shell: bash
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          STATE_BUCKET_NAME: ${{ vars.STATE_BUCKET_NAME }}
+          SITE_BUCKET_NAME: ${{ vars.SITE_BUCKET_NAME }}
+          HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+          DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+        run: |
+          missing=()
+          for name in AWS_REGION STATE_BUCKET_NAME SITE_BUCKET_NAME HOSTED_ZONE_ID DEPLOY_ROLE_ARN; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Deployment is not configured — missing ${missing[*]}. Run 'terraform apply' in infra/bootstrap, then set the repository variables and secrets listed in the README's Deployment section."
+            exit 1
+          fi
+          echo "All required variables and secrets are present."
+
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}

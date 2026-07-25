@@ -4,3 +4,10 @@ site_bucket_name  = "earth-map-prod-site-010382427026"
 hosted_zone_id    = "Z10168803Q16IBJCR6YRD"
 github_owner      = "HuyNguyen260398"
 github_repo       = "earth-map"
+
+# Required when the repository issues the immutable OIDC subject claim, i.e.
+# when the command below returns a sub_claim_prefix containing "@" IDs:
+#   gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+# Leave both null for repositories still on the plain repo:<owner>/<repo> form.
+github_owner_id = 22511283
+github_repo_id  = 1308814026

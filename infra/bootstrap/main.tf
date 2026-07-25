@@ -5,6 +5,30 @@ data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
+locals {
+  # GitHub issues the OIDC subject claim in one of two shapes. Repositories
+  # created before the immutable-subject rollout get
+  #   repo:<owner>/<repo>:<context>
+  # newer ones — earth-map among them — get the ID-qualified form
+  #   repo:<owner>@<owner_id>/<repo>@<repo_id>:<context>
+  # Check which applies with:
+  #   gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+  #
+  # Both are listed when the IDs are supplied: a StringEquals condition with a
+  # list matches if any element does, so the roles keep working if GitHub
+  # migrates the repository between formats. They stay exact strings rather
+  # than a wildcard, which would also match a repo named earth-map-evil.
+  subject_prefixes = compact([
+    "repo:${var.github_owner}/${var.github_repo}",
+    var.github_owner_id != null && var.github_repo_id != null
+    ? "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}"
+    : null,
+  ])
+
+  plan_subjects   = [for prefix in local.subject_prefixes : "${prefix}:pull_request"]
+  deploy_subjects = [for prefix in local.subject_prefixes : "${prefix}:ref:refs/heads/main"]
+}
+
 # ---------------------------------------------------------------------------
 # Terraform remote state
 # ---------------------------------------------------------------------------
@@ -65,7 +89,7 @@ data "aws_iam_policy_document" "plan_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_owner}/${var.github_repo}:pull_request"]
+      values   = local.plan_subjects
     }
   }
 }
@@ -103,7 +127,7 @@ data "aws_iam_policy_document" "deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_owner}/${var.github_repo}:ref:refs/heads/main"]
+      values   = local.deploy_subjects
     }
   }
 }
